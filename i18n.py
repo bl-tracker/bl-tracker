@@ -120,6 +120,12 @@ STRINGS = {
     # Telegram message
     "tg_header": {"sw": "\U0001F4E6 Muhtasari wa BL", "en": "\U0001F4E6 BL Summary"},
     "tg_time": {"sw": "Muda", "en": "Time"},
+    "tg_active": {"sw": "Zinazoendelea", "en": "Ongoing"},
+    "tg_all_done": {"sw": "Hakuna BL inayoendelea — zote zimetoka gate out. ✅",
+                    "en": "No active BLs — all have gated out. ✅"},
+    "section_active": {"sw": "Zinazoendelea (hazijatoka ICD/Port)",
+                       "en": "Ongoing (not yet gated out)"},
+    "section_done": {"sw": "Zimekamilika (Gate Out)", "en": "Completed (Gated out)"},
     "tg_sync_header": {"sw": "\U0001F504 Mabadiliko mapya kutoka TANeSW",
                        "en": "\U0001F504 New updates from TANeSW"},
     "tg_sync_none": {"sw": "Hakuna mabadiliko mapya kwa sasa.",

@@ -162,27 +162,40 @@ CAT_EMOJI = {"completed": "✅", "in_progress": "\U0001F6A2",
 CAT_SORT = {"problem": 0, "in_progress": 1, "completed": 2, "other": 3}
 
 
+def is_done(b):
+    """A BL is 'done' once it has gated out from the ICD/Port."""
+    return (b.get("category") == "completed"
+            or bool((b.get("gate_out_date") or "").strip()))
+
+
 def build_summary_text(lang=None):
-    """Summary grouped by agent (clearing company); under each company,
-    every BL is listed as: <status emoji> client - number (status).
-    HTML-escaped and capped for Telegram's 4096 limit."""
+    """Telegram summary: ONLY active BLs (not yet gated out), grouped by agent
+    (clearing company). Completed ones are excluded here — they get one final
+    notice through the TANeSW sync when they gate out, then live in the app."""
     lang = lang or NOTIFY_LANG
     records = db.list_bls()
     counts = db.summary_counts()
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     no_agent = t("no_agent", lang)
+    active = [b for b in records if not is_done(b)]
     by_agent = {}
-    for b in records:
+    for b in active:
         key = (b.get("agent") or "").strip() or no_agent
         by_agent.setdefault(key, []).append(b)
 
     def agent_sort(k):
         return (k == no_agent, k.lower())
 
-    lines = [f"<b>{t('tg_header', lang)}</b>", "",
-             f"{t('total', lang)}: <b>{counts['total']}</b>", ""]
-
+    lines = [
+        f"<b>{t('tg_header', lang)}</b>", "",
+        (f"{t('tg_active', lang)}: <b>{len(active)}</b>  ·  "
+         f"✅ {counts['completed']}  ·  \U0001F6A2 {counts['in_progress']}  ·  "
+         f"⚠️ {counts['problem']}  ·  {t('total', lang)} {counts['total']}"),
+        "",
+    ]
+    if not active:
+        lines.append(t("tg_all_done", lang))
     for agent in sorted(by_agent, key=agent_sort):
         items = sorted(by_agent[agent],
                        key=lambda b: CAT_SORT.get(b["category"], 3))
@@ -232,17 +245,25 @@ def bl():
     doc_ids = db.bls_with_documents()
     agents = db.agents_list()
 
-    # Group by company (agent) for the collapsible accordion.
+    # Group by company (agent) for the collapsible accordion. Active BLs
+    # (not yet gated out) and completed ones are shown in separate sections.
     no_agent = t("no_agent", lang)
-    groups = []
-    for r in records:
-        key = (r.get("agent") or "").strip() or no_agent
-        if not groups or groups[-1]["agent"] != key:
-            groups.append({"agent": key, "items": []})
-        groups[-1]["items"].append(r)
 
-    return render_template("index.html", groups=groups, counts=counts,
-                           search=search, doc_ids=doc_ids,
+    def group(recs):
+        groups = []
+        for r in recs:
+            key = (r.get("agent") or "").strip() or no_agent
+            if not groups or groups[-1]["agent"] != key:
+                groups.append({"agent": key, "items": []})
+            groups[-1]["items"].append(r)
+        return groups
+
+    active_groups = group([r for r in records if not is_done(r)])
+    done_groups = group([r for r in records if is_done(r)])
+
+    return render_template("index.html",
+                           active_groups=active_groups, done_groups=done_groups,
+                           counts=counts, search=search, doc_ids=doc_ids,
                            agents=agents, agent=agent)
 
 

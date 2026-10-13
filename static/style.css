@@ -206,6 +206,13 @@ tbody tr:last-child { border-bottom: none; }
 }
 @media (max-width: 440px) { .svc-grid { grid-template-columns: 1fr; } }
 
+/* ===== Section headings (Ongoing / Completed) ===== */
+.section-head { margin: 1.4rem 0 .6rem; font-size: 1.02rem; font-weight: 700;
+  display: flex; align-items: center; gap: .4rem; padding-bottom: .35rem;
+  border-bottom: 2px solid var(--line); }
+.section-active { color: var(--brand); border-bottom-color: var(--accent); }
+.section-done { color: #1b8a4b; border-bottom-color: #1b8a4b55; }
+
 /* ===== Accordion (company groups) ===== */
 .accordion { display: flex; flex-direction: column; gap: .7rem; }
 .agent-group { background: var(--surface); border: 1px solid var(--line);

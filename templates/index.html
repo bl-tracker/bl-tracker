@@ -1,4 +1,69 @@
 {% extends "base.html" %}
+
+{% macro bl_card(bl) %}
+<div class="bl-card">
+  <div class="bl-top">
+    <div class="bl-id">
+      <strong class="bl-client">{{ bl.client }}</strong>
+      <span class="bl-no mono">{{ bl.bl_no }}</span>
+    </div>
+    <span class="badge badge-{{ bl.category }}">{{ cat_label(bl.category) }}</span>
+  </div>
+  {% if bl.status %}<div class="bl-status">{{ bl.status }}</div>{% endif %}
+
+  <div class="stepper">
+    <span class="step {{ 'done' if bl.manifest_date }}">{{ t('manifest_date') }}</span>
+    <span class="step {{ 'done' if bl.carry_in_date }}">{{ t('carry_in_date') }}</span>
+    <span class="step {{ 'done' if bl.release_date }}">{{ t('release_date') }}</span>
+    <span class="step {{ 'done' if bl.gate_out_date }}">{{ t('gate_out_date') }}</span>
+  </div>
+
+  <div class="bl-meta">
+    {% set ref = bl.manifest_date or bl.carry_in_date or bl.bl_date %}
+    {% set d = days_since(ref) %}
+    {% if d is not none and d >= 0 and bl.category != 'completed' and not bl.gate_out_date %}
+      {% set over = d >= overstay_days %}
+      <span class="chip {{ 'over' if over }}">{% if over %}⚠️ {{ t('overstay') }} · {% endif %}⏳ {{ d }} {{ t('days') }} {{ t('at_port') }}</span>
+    {% endif %}
+    {% if bl.icd %}<span class="chip">🏭 {{ t('icd') }}: {{ bl.icd }}</span>{% endif %}
+    {% if bl.manifest_date %}<span class="chip">📅 {{ t('manifest_date') }}: {{ bl.manifest_date }}</span>{% endif %}
+    {% if bl.carry_in_date %}<span class="chip">📥 {{ t('carry_in_date') }}: {{ bl.carry_in_date }}</span>{% endif %}
+    {% if bl.release_date %}<span class="chip ok">✅ {{ t('release_date') }}: {{ bl.release_date }}</span>{% endif %}
+    {% if bl.gate_out_date %}<span class="chip ok">🚚 {{ t('gate_out_date') }}: {{ bl.gate_out_date }}</span>{% endif %}
+    {% if bl.vessel %}<span class="chip">🛳️ {{ bl.vessel }}</span>{% endif %}
+    {% if bl.shipping_line %}<span class="chip">🚢 {{ bl.shipping_line }}</span>{% endif %}
+  </div>
+  {% if bl.notes %}<div class="bl-notes">📝 {{ bl.notes }}</div>{% endif %}
+  <div class="bl-actions">
+    {% if bl.id in doc_ids %}
+    <a href="{{ url_for('document', bl_id=bl.id) }}" target="_blank" class="btn btn-sm" title="{{ t('view_doc') }}">📎</a>
+    {% endif %}
+    <a href="{{ url_for('edit', bl_id=bl.id) }}" class="btn btn-sm">{{ t('edit') }}</a>
+    <form method="post" action="{{ url_for('delete', bl_id=bl.id) }}" style="display:inline"
+          onsubmit="return confirm('{{ t('confirm_delete') }}')">
+      <button type="submit" class="btn btn-sm btn-danger">{{ t('delete') }}</button>
+    </form>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro accordion(groups, open_default) %}
+<div class="accordion">
+  {% for grp in groups %}
+  <details class="agent-group" {% if open_default %}open{% endif %}>
+    <summary class="agent-summary">
+      <span class="chev" aria-hidden="true">▸</span>
+      <span class="agent-nm">{{ grp.agent }}</span>
+      <span class="agent-count">{{ grp['items']|length }}</span>
+    </summary>
+    <div class="agent-body">
+      {% for bl in grp['items'] %}{{ bl_card(bl) }}{% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+</div>
+{% endmacro %}
+
 {% block content %}
 
 <div class="page-head">
@@ -43,68 +108,18 @@
     <button type="submit" class="btn">{{ t('search') }}</button>
   </form>
 
-  {% if groups %}
-  <div class="accordion">
-    {% for grp in groups %}
-    <details class="agent-group" {% if agent or groups|length == 1 %}open{% endif %}>
-      <summary class="agent-summary">
-        <span class="chev" aria-hidden="true">▸</span>
-        <span class="agent-nm">{{ grp.agent }}</span>
-        <span class="agent-count">{{ grp['items']|length }}</span>
-      </summary>
-      <div class="agent-body">
-        {% for bl in grp['items'] %}
-        <div class="bl-card">
-          <div class="bl-top">
-            <div class="bl-id">
-              <strong class="bl-client">{{ bl.client }}</strong>
-              <span class="bl-no mono">{{ bl.bl_no }}</span>
-            </div>
-            <span class="badge badge-{{ bl.category }}">{{ cat_label(bl.category) }}</span>
-          </div>
-          {% if bl.status %}<div class="bl-status">{{ bl.status }}</div>{% endif %}
-
-          <div class="stepper">
-            <span class="step {{ 'done' if bl.manifest_date }}">{{ t('manifest_date') }}</span>
-            <span class="step {{ 'done' if bl.carry_in_date }}">{{ t('carry_in_date') }}</span>
-            <span class="step {{ 'done' if bl.release_date }}">{{ t('release_date') }}</span>
-            <span class="step {{ 'done' if bl.gate_out_date }}">{{ t('gate_out_date') }}</span>
-          </div>
-
-          <div class="bl-meta">
-            {% set ref = bl.manifest_date or bl.carry_in_date or bl.bl_date %}
-            {% set d = days_since(ref) %}
-            {% if d is not none and d >= 0 and bl.category != 'completed' and not bl.gate_out_date %}
-              {% set over = d >= overstay_days %}
-              <span class="chip {{ 'over' if over }}">{% if over %}⚠️ {{ t('overstay') }} · {% endif %}⏳ {{ d }} {{ t('days') }} {{ t('at_port') }}</span>
-            {% endif %}
-            {% if bl.icd %}<span class="chip">🏭 {{ t('icd') }}: {{ bl.icd }}</span>{% endif %}
-            {% if bl.manifest_date %}<span class="chip">📅 {{ t('manifest_date') }}: {{ bl.manifest_date }}</span>{% endif %}
-            {% if bl.carry_in_date %}<span class="chip">📥 {{ t('carry_in_date') }}: {{ bl.carry_in_date }}</span>{% endif %}
-            {% if bl.release_date %}<span class="chip ok">✅ {{ t('release_date') }}: {{ bl.release_date }}</span>{% endif %}
-            {% if bl.gate_out_date %}<span class="chip ok">🚚 {{ t('gate_out_date') }}: {{ bl.gate_out_date }}</span>{% endif %}
-            {% if bl.vessel %}<span class="chip">🛳️ {{ bl.vessel }}</span>{% endif %}
-            {% if bl.shipping_line %}<span class="chip">🚢 {{ bl.shipping_line }}</span>{% endif %}
-          </div>
-          {% if bl.notes %}<div class="bl-notes">📝 {{ bl.notes }}</div>{% endif %}
-          <div class="bl-actions">
-            {% if bl.id in doc_ids %}
-            <a href="{{ url_for('document', bl_id=bl.id) }}" target="_blank" class="btn btn-sm" title="{{ t('view_doc') }}">📎</a>
-            {% endif %}
-            <a href="{{ url_for('edit', bl_id=bl.id) }}" class="btn btn-sm">{{ t('edit') }}</a>
-            <form method="post" action="{{ url_for('delete', bl_id=bl.id) }}" style="display:inline"
-                  onsubmit="return confirm('{{ t('confirm_delete') }}')">
-              <button type="submit" class="btn btn-sm btn-danger">{{ t('delete') }}</button>
-            </form>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </details>
-    {% endfor %}
-  </div>
-  {% else %}
+  {% if not active_groups and not done_groups %}
   <p class="empty">{{ t('no_records') }}</p>
+  {% endif %}
+
+  {% if active_groups %}
+  <h3 class="section-head section-active">🚢 {{ t('section_active') }}</h3>
+  {{ accordion(active_groups, agent or active_groups|length == 1) }}
+  {% endif %}
+
+  {% if done_groups %}
+  <h3 class="section-head section-done">✅ {{ t('section_done') }}</h3>
+  {{ accordion(done_groups, False) }}
   {% endif %}
 </section>
 
