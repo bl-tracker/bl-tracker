@@ -6,6 +6,9 @@
   <title>{{ t('brand') }}</title>
   <link rel="icon" href="{{ url_for('static', filename='logo-mark.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    (function(){ try{ var t=localStorage.getItem('theme'); if(t){ document.documentElement.setAttribute('data-theme', t); } }catch(e){} })();
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -17,7 +20,16 @@
     </div>
     <nav>
       <a href="{{ url_for('welcome') }}">{{ t('nav_home') }}</a>
+      {% if logged_in %}
       <a href="{{ url_for('bl') }}">{{ t('nav_tracker') }}</a>
+      <a href="{{ url_for('dashboard') }}">{{ t('nav_dashboard') }}</a>
+      {% endif %}
+      {% if auth_on and logged_in %}
+      <a href="{{ url_for('logout') }}">{{ t('nav_logout') }}</a>
+      {% elif auth_on %}
+      <a href="{{ url_for('login') }}">{{ t('nav_login') }}</a>
+      {% endif %}
+      <button type="button" class="theme-toggle" id="themeToggle" title="Light / Dark" aria-label="Toggle light/dark">🌙</button>
       <a class="lang" href="{{ url_for('set_lang', lang='en' if lang=='sw' else 'sw') }}">{{ t('lang_switch') }}</a>
     </nav>
   </header>
@@ -37,5 +49,20 @@
   <footer class="foot">
     <span>© {{ t('brand') }} — {{ t('tagline') }}</span>
   </footer>
+
+  <script>
+    (function(){
+      var btn = document.getElementById('themeToggle');
+      if(!btn) return;
+      function cur(){ return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+      function apply(t){
+        document.documentElement.setAttribute('data-theme', t);
+        try{ localStorage.setItem('theme', t); }catch(e){}
+        btn.textContent = (t === 'dark') ? '☀️' : '🌙';
+      }
+      apply(cur());
+      btn.addEventListener('click', function(){ apply(cur() === 'dark' ? 'light' : 'dark'); });
+    })();
+  </script>
 </body>
 </html>

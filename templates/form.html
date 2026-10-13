@@ -24,8 +24,14 @@
     </label>
 
     <label>
+      {{ t('vessel') }}
+      <input type="text" name="vessel" value="{{ bl.vessel or '' }}">
+    </label>
+
+    <label>
       {{ t('shipping_line') }}
       <input type="text" name="shipping_line" value="{{ bl.shipping_line or '' }}">
+      <small class="hint">{{ t('sl_auto_hint') }}</small>
     </label>
 
     <label>

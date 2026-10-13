@@ -9,19 +9,22 @@ import os
 import io
 import csv
 import html
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
+from functools import wraps
 
 import requests
 from flask import (
     Flask, request, redirect, url_for, render_template, make_response, flash,
-    send_file, Response,
+    send_file, Response, session,
 )
 
 import db
+from carriers import detect_shipping_line
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "change-me-in-production")
 app.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024  # 15 MB upload cap
+app.permanent_session_lifetime = timedelta(days=14)
 
 # ----- Config -----
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -29,12 +32,31 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 NOTIFY_TOKEN = os.environ.get("NOTIFY_TOKEN", "")
 NOTIFY_LANG = os.environ.get("NOTIFY_LANG", "sw")
 RUN_SCHEDULER = os.environ.get("RUN_SCHEDULER", "0") == "1"
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "")       # set this to enable login
+OVERSTAY_DAYS = int(os.environ.get("OVERSTAY_DAYS", "21") or "21")
 
 ALLOWED_DOC_EXT = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
 
 from i18n import t  # noqa: E402
 
 db.init_db()
+
+
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if APP_PASSWORD and not session.get("auth"):
+            return redirect(url_for("login", next=request.path))
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def _days_since(s):
+    try:
+        d = datetime.strptime(str(s)[:10], "%Y-%m-%d").date()
+        return (date.today() - d).days
+    except Exception:
+        return None
 
 
 def current_lang():
@@ -49,7 +71,32 @@ def inject_helpers():
         "lang": lang,
         "t": lambda key: t(key, lang),
         "cat_label": lambda c: t(c if c in db.CATEGORIES else "other", lang),
+        "days_since": _days_since,
+        "overstay_days": OVERSTAY_DAYS,
+        "auth_on": bool(APP_PASSWORD),
+        "logged_in": (not APP_PASSWORD) or bool(session.get("auth")),
     }
+
+
+# ----- Auth -----
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    lang = current_lang()
+    if not APP_PASSWORD:
+        return redirect(url_for("bl"))
+    if request.method == "POST":
+        if request.form.get("password") == APP_PASSWORD:
+            session["auth"] = True
+            session.permanent = True
+            return redirect(request.args.get("next") or url_for("bl"))
+        flash(t("login_wrong", lang), "error")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.pop("auth", None)
+    return redirect(url_for("welcome"))
 
 
 # ----- Telegram -----
@@ -160,8 +207,21 @@ def welcome():
     return render_template("welcome.html")
 
 
+# ----- Dashboard -----
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    counts = db.summary_counts()
+    by_agent = db.counts_by_agent()
+    by_icd = db.counts_by_icd(limit=10)
+    cat_counts = [(c, counts[c]) for c in db.CATEGORIES]
+    return render_template("dashboard.html", counts=counts,
+                           by_agent=by_agent, by_icd=by_icd, cat_counts=cat_counts)
+
+
 # ----- BL tracker list / summary -----
 @app.route("/bl")
+@login_required
 def bl():
     lang = current_lang()
     search = request.args.get("q", "").strip()
@@ -207,14 +267,26 @@ def _save_uploaded_doc(bl_id):
 
 
 # ----- Add / edit / delete -----
+def _form_with_carrier():
+    """Form data as a dict; if Shipping Line is blank, auto-detect it from the
+    Vessel name / BL number so the user doesn't have to type it."""
+    data = request.form.to_dict()
+    if not (data.get("shipping_line") or "").strip():
+        guess = detect_shipping_line(data.get("vessel", ""), data.get("bl_no", ""))
+        if guess:
+            data["shipping_line"] = guess
+    return data
+
+
 @app.route("/add", methods=["GET", "POST"])
+@login_required
 def add():
     lang = current_lang()
     if request.method == "POST":
         if not request.form.get("bl_no", "").strip():
             flash(t("required", lang), "error")
             return render_template("form.html", bl=request.form, mode="add", agents=db.agents_list())
-        bl_id = db.create_bl(request.form)
+        bl_id = db.create_bl(_form_with_carrier())
         _save_uploaded_doc(bl_id)
         flash(t("created_ok", lang), "ok")
         return redirect(url_for("bl"))
@@ -222,6 +294,7 @@ def add():
 
 
 @app.route("/edit/<int:bl_id>", methods=["GET", "POST"])
+@login_required
 def edit(bl_id):
     lang = current_lang()
     bl = db.get_bl(bl_id)
@@ -231,7 +304,7 @@ def edit(bl_id):
         if not request.form.get("bl_no", "").strip():
             flash(t("required", lang), "error")
             return render_template("form.html", bl=request.form, mode="edit", bl_id=bl_id, agents=db.agents_list())
-        db.update_bl(bl_id, request.form)
+        db.update_bl(bl_id, _form_with_carrier())
         _save_uploaded_doc(bl_id)
         flash(t("updated_ok", lang), "ok")
         return redirect(url_for("bl"))
@@ -240,6 +313,7 @@ def edit(bl_id):
 
 
 @app.route("/delete/<int:bl_id>", methods=["POST"])
+@login_required
 def delete(bl_id):
     lang = current_lang()
     db.delete_bl(bl_id)
@@ -249,6 +323,7 @@ def delete(bl_id):
 
 # ----- View / download a BL document -----
 @app.route("/document/<int:bl_id>")
+@login_required
 def document(bl_id):
     doc = db.get_document(bl_id)
     if not doc:
@@ -262,12 +337,13 @@ def document(bl_id):
 
 
 # ----- Import Excel / CSV -----
-IMPORT_FIELDS = ["bl_no", "client", "agent", "shipping_line", "status", "category", "bl_date", "notes"]
+IMPORT_FIELDS = ["bl_no", "client", "agent", "vessel", "shipping_line", "status", "category", "bl_date", "notes"]
 HEADER_ALIASES = {
     "bl": "bl_no", "bl no": "bl_no", "bl_no": "bl_no", "bl number": "bl_no", "namba ya bl": "bl_no",
     "client": "client", "mteja": "client", "customer": "client",
     "agent": "agent", "kampuni": "agent", "company": "agent", "clearing agent": "agent", "clearing company": "agent",
-    "shipping_line": "shipping_line", "shipping line": "shipping_line", "line": "shipping_line",
+    "vessel": "vessel", "vessel name": "vessel", "meli": "vessel", "ship": "vessel",
+    "shipping_line": "shipping_line", "shipping line": "shipping_line", "s/line": "shipping_line", "carrier": "shipping_line", "line": "shipping_line",
     "status": "status", "hali": "status",
     "category": "category", "kundi": "category",
     "bl_date": "bl_date", "date": "bl_date", "tarehe": "bl_date",
@@ -310,6 +386,7 @@ def _parse_rows(headers, data_rows):
 
 
 @app.route("/import", methods=["GET", "POST"])
+@login_required
 def import_bls():
     lang = current_lang()
     if request.method == "POST":
@@ -356,13 +433,14 @@ def import_bls():
 
 
 @app.route("/template.csv")
+@login_required
 def template_csv():
     out = io.StringIO()
     w = csv.writer(out)
     w.writerow(IMPORT_FIELDS)
-    w.writerow(["YSPQINMTW201", "ABC Traders Ltd", "Clearing Co A", "Maersk",
+    w.writerow(["YSPQINMTW201", "ABC Traders Ltd", "Clearing Co A", "MAERSK NADI", "Maersk",
                 "Cargo at port", "in_progress", "2026-10-10", "Inasubiri assessment"])
-    w.writerow(["GOSUNGB20807248", "Juma Imports", "Clearing Co B", "MSC",
+    w.writerow(["GOSUNGB20807248", "Juma Imports", "Clearing Co B", "CALANDRA", "MSC",
                 "Released", "completed", "2026-10-05", ""])
     resp = Response(out.getvalue(), mimetype="text/csv")
     resp.headers["Content-Disposition"] = "attachment; filename=bl_template.csv"
@@ -371,6 +449,7 @@ def template_csv():
 
 # ----- Send summary now (UI button) -----
 @app.route("/send-summary", methods=["POST"])
+@login_required
 def send_summary():
     lang = current_lang()
     ok, _ = notify_telegram()
@@ -380,6 +459,7 @@ def send_summary():
 
 # ----- PDF report (download / print) -----
 @app.route("/report.pdf")
+@login_required
 def report_pdf():
     from report import build_report_pdf
     agent = request.args.get("agent", "").strip() or None

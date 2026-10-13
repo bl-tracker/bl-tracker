@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="formwrap" style="max-width:420px;margin:2rem auto">
+  <h2>{{ t('login_title') }}</h2>
+  <p class="muted">{{ t('login_note') }}</p>
+  <form method="post" action="{{ url_for('login', next=request.args.get('next','')) }}" class="blform">
+    <label class="full">
+      {{ t('password') }}
+      <input type="password" name="password" autofocus required>
+    </label>
+    <div class="formactions">
+      <button type="submit" class="btn btn-primary">{{ t('login_btn') }}</button>
+    </div>
+  </form>
+</section>
+
+{% endblock %}

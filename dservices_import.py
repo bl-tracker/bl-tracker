@@ -21,6 +21,8 @@ import re
 
 from openpyxl import load_workbook
 
+from carriers import detect_shipping_line
+
 AGENT_SHEET_RE = re.compile(r"^(?P<agent>.+?)\s+(?P<kind>CNT|VEHICLE)$", re.I)
 
 # field -> list of matcher functions on a lowercased combined header label
@@ -120,11 +122,14 @@ def parse(file_bytes):
                 status = ""
             items = str(cell(r, "items")).strip()
             icd = str(cell(r, "icd")).strip().replace("Select", "")
+            vessel = str(cell(r, "vessel")).strip()
             out.append({
                 "bl_no": bl,
                 "client": client,
                 "agent": agent,
-                "shipping_line": str(cell(r, "vessel")).strip(),
+                "vessel": vessel,
+                # auto-detected from vessel name / BL prefix; blank if unknown
+                "shipping_line": detect_shipping_line(vessel, bl),
                 "status": status,
                 "category": _infer_category(status),
                 "bl_date": _as_date(cell(r, "received")),

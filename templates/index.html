@@ -60,12 +60,27 @@
             <span class="badge badge-{{ bl.category }}">{{ cat_label(bl.category) }}</span>
           </div>
           {% if bl.status %}<div class="bl-status">{{ bl.status }}</div>{% endif %}
+
+          <div class="stepper">
+            <span class="step {{ 'done' if bl.manifest_date }}">{{ t('manifest_date') }}</span>
+            <span class="step {{ 'done' if bl.carry_in_date }}">{{ t('carry_in_date') }}</span>
+            <span class="step {{ 'done' if bl.release_date }}">{{ t('release_date') }}</span>
+            <span class="step {{ 'done' if bl.gate_out_date }}">{{ t('gate_out_date') }}</span>
+          </div>
+
           <div class="bl-meta">
+            {% set ref = bl.manifest_date or bl.carry_in_date or bl.bl_date %}
+            {% set d = days_since(ref) %}
+            {% if d is not none and d >= 0 and bl.category != 'completed' and not bl.gate_out_date %}
+              {% set over = d >= overstay_days %}
+              <span class="chip {{ 'over' if over }}">{% if over %}⚠️ {{ t('overstay') }} · {% endif %}⏳ {{ d }} {{ t('days') }} {{ t('at_port') }}</span>
+            {% endif %}
             {% if bl.icd %}<span class="chip">🏭 {{ t('icd') }}: {{ bl.icd }}</span>{% endif %}
             {% if bl.manifest_date %}<span class="chip">📅 {{ t('manifest_date') }}: {{ bl.manifest_date }}</span>{% endif %}
             {% if bl.carry_in_date %}<span class="chip">📥 {{ t('carry_in_date') }}: {{ bl.carry_in_date }}</span>{% endif %}
             {% if bl.release_date %}<span class="chip ok">✅ {{ t('release_date') }}: {{ bl.release_date }}</span>{% endif %}
             {% if bl.gate_out_date %}<span class="chip ok">🚚 {{ t('gate_out_date') }}: {{ bl.gate_out_date }}</span>{% endif %}
+            {% if bl.vessel %}<span class="chip">🛳️ {{ bl.vessel }}</span>{% endif %}
             {% if bl.shipping_line %}<span class="chip">🚢 {{ bl.shipping_line }}</span>{% endif %}
           </div>
           {% if bl.notes %}<div class="bl-notes">📝 {{ bl.notes }}</div>{% endif %}

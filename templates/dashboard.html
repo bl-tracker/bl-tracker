@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-head">
+  <h1 class="page-title">{{ t('dash_title') }}</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('bl') }}" class="btn btn-sm">{{ t('nav_tracker') }}</a>
+  </div>
+</div>
+
+<section class="summary">
+  <div class="cards">
+    <div class="card card-total"><span class="num">{{ counts.total }}</span><span class="lbl">{{ t('total') }}</span></div>
+    <div class="card card-ok"><span class="num">{{ counts.completed }}</span><span class="lbl">{{ t('completed') }}</span></div>
+    <div class="card card-prog"><span class="num">{{ counts.in_progress }}</span><span class="lbl">{{ t('in_progress') }}</span></div>
+    <div class="card card-prob"><span class="num">{{ counts.problem }}</span><span class="lbl">{{ t('problem') }}</span></div>
+    <div class="card card-other"><span class="num">{{ counts.other }}</span><span class="lbl">{{ t('other') }}</span></div>
+  </div>
+</section>
+
+{% macro barchart(rows, total, color) %}
+  <div class="bars">
+    {% set maxv = (rows | map(attribute=1) | max) if rows else 1 %}
+    {% for name, n in rows %}
+    <div class="bar-row">
+      <span class="bar-label" title="{{ name }}">{{ name }}</span>
+      <span class="bar-track"><span class="bar-fill" style="width: {{ (n / (maxv or 1) * 100) | round(0, 'floor') }}%; background: {{ color }}"></span></span>
+      <span class="bar-val">{{ n }}</span>
+    </div>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+<section class="dash-grid">
+  <div class="dash-card">
+    <h3>{{ t('dash_by_company') }}</h3>
+    {{ barchart(by_agent, counts.total, 'var(--brand)') }}
+  </div>
+
+  <div class="dash-card">
+    <h3>{{ t('dash_by_status') }}</h3>
+    <div class="bars">
+      {% set catmax = (cat_counts | map(attribute=1) | max) if cat_counts else 1 %}
+      {% for c, n in cat_counts %}
+      <div class="bar-row">
+        <span class="bar-label">{{ cat_label(c) }}</span>
+        <span class="bar-track"><span class="bar-fill badge-{{ c }}" style="width: {{ (n / (catmax or 1) * 100) | round(0, 'floor') }}%"></span></span>
+        <span class="bar-val">{{ n }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="dash-card">
+    <h3>{{ t('dash_by_icd') }}</h3>
+    {% if by_icd %}
+      {{ barchart(by_icd, counts.total, 'var(--accent)') }}
+    {% else %}
+      <p class="muted">—</p>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}

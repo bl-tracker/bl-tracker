@@ -150,7 +150,7 @@ tbody tr:last-child { border-bottom: none; }
 
 /* ===== Welcome: hero ===== */
 .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 2rem; align-items: center;
-  background: linear-gradient(135deg, var(--navy), #10365f); color: #fff;
+  background: linear-gradient(135deg, #0b2545, #10365f); color: #fff;
   border-radius: 18px; padding: 2.2rem; margin: .5rem 0 2rem; }
 .hero-kicker { text-transform: uppercase; letter-spacing: .18em; font-size: .75rem;
   color: var(--accent); font-weight: 700; margin: 0 0 .5rem; }
@@ -235,6 +235,35 @@ details[open] > .agent-summary .chev { transform: rotate(90deg); }
 .bl-notes { color: var(--muted); font-size: .82rem; margin-top: .4rem; }
 .bl-actions { display: flex; gap: .4rem; margin-top: .6rem; justify-content: flex-end; }
 
+/* overstay chip */
+.chip.over { background: #fee2e2; color: #991b1b; font-weight: 700; }
+
+/* progress stepper */
+.stepper { display: flex; gap: .3rem; margin-top: .5rem; flex-wrap: wrap; }
+.step { flex: 1; min-width: 60px; text-align: center; font-size: .68rem; font-weight: 600;
+  color: #94a3b8; background: #f1f5f9; border-radius: 6px; padding: .22rem .3rem;
+  position: relative; border: 1px solid transparent; }
+.step.done { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+.step.done::before { content: "✓ "; }
+
+/* ===== Dashboard ===== */
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 1.1rem 1.2rem; box-shadow: var(--shadow); }
+.dash-card h3 { margin: 0 0 .9rem; color: var(--navy); font-size: 1rem; }
+.bars { display: flex; flex-direction: column; gap: .5rem; }
+.bar-row { display: grid; grid-template-columns: 110px 1fr 34px; align-items: center; gap: .5rem; }
+.bar-label { font-size: .8rem; color: var(--ink); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; }
+.bar-track { background: #eef2f7; border-radius: 6px; height: 16px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 6px; min-width: 2px; background: var(--brand); }
+.bar-fill.badge-completed { background: var(--ok); }
+.bar-fill.badge-in_progress { background: var(--prog); }
+.bar-fill.badge-problem { background: var(--prob); }
+.bar-fill.badge-other { background: var(--other); }
+.bar-val { font-size: .82rem; font-weight: 700; color: var(--navy); text-align: right; }
+@media (max-width: 760px) { .dash-grid { grid-template-columns: 1fr; } }
+
 /* Mobile */
 @media (max-width: 760px) {
   .cards { grid-template-columns: repeat(2, 1fr); }
@@ -251,3 +280,33 @@ details[open] > .agent-summary .chev { transform: rotate(90deg); }
   .notes-row td { justify-content: flex-start; }
   .notes-row td::before { display: none; }
 }
+
+/* ===== Theme toggle button ===== */
+.theme-toggle { background: transparent; border: 1px solid var(--line); cursor: pointer;
+  font-size: 1rem; line-height: 1; padding: .3rem .5rem; border-radius: 999px; color: inherit; }
+.theme-toggle:hover { border-color: var(--accent); }
+
+/* ===== Dark mode ===== */
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --ink: #e5e9f0;
+  --muted: #94a3b8;
+  --line: #334155;
+  --navy: #e5e9f0;            /* heading/brand text flips light */
+  --shadow: 0 1px 3px rgba(0,0,0,.45);
+}
+[data-theme="dark"] body { background: var(--bg); }
+[data-theme="dark"] thead th,
+[data-theme="dark"] .agent-summary { background: #243247; }
+[data-theme="dark"] .agent-summary:hover { background: #2b3b52; }
+[data-theme="dark"] .bl-card { background: #1e293b; }
+[data-theme="dark"] .chip { background: #334155; color: #cbd5e1; }
+[data-theme="dark"] .step { background: #334155; color: #94a3b8; }
+[data-theme="dark"] .bar-track { background: #334155; }
+[data-theme="dark"] .import-help code { background: #0f172a; color: #cbd5e1; }
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+  background: #0f172a; color: #e5e9f0; border-color: #334155; }
+[data-theme="dark"] .btn { background: #1e293b; color: #e5e9f0; }
+[data-theme="dark"] .btn-primary { background: var(--brand); color: #fff; }
+[data-theme="dark"] .notes-row td { background: #223049; }

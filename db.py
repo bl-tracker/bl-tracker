@@ -42,7 +42,8 @@ bls = Table(
     Column("bl_no", String(255), nullable=False),
     Column("client", String(255), default=""),
     Column("agent", String(255), default=""),
-    Column("shipping_line", String(255), default=""),
+    Column("vessel", String(255), default=""),           # ship name
+    Column("shipping_line", String(255), default=""),    # carrier (Maersk, MSC...)
     Column("status", Text, default=""),
     Column("category", String(32), default="in_progress"),
     Column("bl_date", String(32), default=""),
@@ -77,6 +78,7 @@ def _norm_category(value):
 
 
 EXTRA_COLS = {
+    "vessel": "VARCHAR(255)",
     "icd": "VARCHAR(255)",
     "manifest_date": "VARCHAR(64)",
     "carry_in_date": "VARCHAR(64)",
@@ -144,6 +146,7 @@ def _clean(data):
         "bl_no": (data.get("bl_no") or "").strip(),
         "client": (data.get("client") or "").strip(),
         "agent": (data.get("agent") or "").strip(),
+        "vessel": (data.get("vessel") or "").strip(),
         "shipping_line": (data.get("shipping_line") or "").strip(),
         "status": (data.get("status") or "").strip(),
         "category": _norm_category(data.get("category")),
@@ -197,6 +200,25 @@ def summary_counts():
         counts[key] += n
     counts["total"] = sum(counts[c] for c in CATEGORIES)
     return counts
+
+
+def counts_by_agent():
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(bls.c.agent, func.count()).group_by(bls.c.agent)
+        ).fetchall()
+    out = [((a or "-").strip() or "-", n) for a, n in rows]
+    return sorted(out, key=lambda x: -x[1])
+
+
+def counts_by_icd(limit=10):
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(bls.c.icd, func.count())
+            .where(bls.c.icd != "").group_by(bls.c.icd)
+        ).fetchall()
+    out = sorted([(i, n) for i, n in rows], key=lambda x: -x[1])
+    return out[:limit]
 
 
 def bulk_create(rows):

@@ -7,6 +7,28 @@ STRINGS = {
     "tagline": {"sw": "Clearing & Forwarding, Dar es Salaam", "en": "Clearing & Forwarding, Dar es Salaam"},
     "nav_home": {"sw": "Mwanzo", "en": "Home"},
     "nav_tracker": {"sw": "BL Tracker", "en": "BL Tracker"},
+    "nav_dashboard": {"sw": "Dashboard", "en": "Dashboard"},
+    "nav_login": {"sw": "Ingia", "en": "Login"},
+    "nav_logout": {"sw": "Toka", "en": "Logout"},
+
+    # Login
+    "login_title": {"sw": "Ingia kwenye mfumo", "en": "Sign in"},
+    "password": {"sw": "Nenosiri", "en": "Password"},
+    "login_btn": {"sw": "Ingia", "en": "Sign in"},
+    "login_wrong": {"sw": "Nenosiri si sahihi.", "en": "Wrong password."},
+    "login_note": {"sw": "Ukurasa huu ni wa wafanyakazi wa D-SERVICES pekee.", "en": "This area is for D-SERVICES staff only."},
+
+    # Overstay / days / stages
+    "days": {"sw": "siku", "en": "days"},
+    "at_port": {"sw": "bandarini", "en": "at port"},
+    "overstay": {"sw": "OVERSTAY", "en": "OVERSTAY"},
+    "progress": {"sw": "Hatua", "en": "Progress"},
+
+    # Dashboard
+    "dash_title": {"sw": "Dashboard ya Takwimu", "en": "Statistics Dashboard"},
+    "dash_by_company": {"sw": "BL kwa Kampuni", "en": "BL by Company"},
+    "dash_by_status": {"sw": "BL kwa Hali (Kundi)", "en": "BL by Status"},
+    "dash_by_icd": {"sw": "BL kwa ICD/Port (10 za juu)", "en": "BL by ICD/Port (top 10)"},
     "nav_list": {"sw": "Orodha ya BL", "en": "BL List"},
     "nav_add": {"sw": "Ongeza BL", "en": "Add BL"},
     "lang_switch": {"sw": "English", "en": "Kiswahili"},
@@ -57,9 +79,12 @@ STRINGS = {
     "bl_no": {"sw": "Namba ya BL", "en": "BL Number"},
     "client": {"sw": "Mteja", "en": "Client"},
     "agent": {"sw": "Agent / Kampuni", "en": "Agent / Company"},
+    "vessel": {"sw": "Vessel (Meli)", "en": "Vessel"},
     "all_agents": {"sw": "Kampuni zote", "en": "All companies"},
     "no_agent": {"sw": "(Bila kampuni)", "en": "(No company)"},
     "shipping_line": {"sw": "Shipping Line", "en": "Shipping Line"},
+    "sl_auto_hint": {"sw": "Acha wazi — itajazwa yenyewe kutoka BL/Vessel ikiwezekana.",
+                     "en": "Leave blank — auto-filled from the BL number / vessel when possible."},
     "status": {"sw": "Hali (Status)", "en": "Status"},
     "category": {"sw": "Kundi", "en": "Category"},
     "bl_date": {"sw": "Tarehe", "en": "Date"},
