@@ -181,13 +181,14 @@ TESWS_FIELDS = ("status", "category", "vessel", "shipping_line", "icd",
 
 
 def apply_tesws_update(bl_id, fields):
-    """Partial update: only the TANeSW-sourced fields (never touches
-    client/agent/notes/bl_date). Always stamps last_checked."""
+    """Authoritative update of the TANeSW-sourced fields (never touches
+    client/agent/notes/bl_date). Empty values ARE written, so a stale date
+    (e.g. a port gate-out) gets cleared when TANeSW no longer reports it."""
     values = {"last_checked": _now(), "updated_at": _now()}
     for k in TESWS_FIELDS:
-        if k in fields and fields[k] not in (None, ""):
+        if k in fields:
             values[k] = (_norm_category(fields[k]) if k == "category"
-                         else str(fields[k]).strip())
+                         else str(fields[k] or "").strip())
     with engine.begin() as conn:
         conn.execute(sa_update(bls).where(bls.c.id == bl_id).values(**values))
 

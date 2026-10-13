@@ -48,9 +48,10 @@ def is_dservices_workbook(sheetnames):
 
 
 def _infer_category(status):
+    # Complete ONLY when gated out (per operations rule); everything else is
+    # still ongoing unless flagged as a problem.
     s = (status or "").lower()
-    if any(k in s for k in ("release", "get out", "gate out", "handover report en",
-                            "delivered", "delivery done", "completed")):
+    if "gate out" in s or "get out" in s:
         return "completed"
     if any(k in s for k in ("suspect", "target", "overstay", "query", "hold",
                             "problem", "rejected", "blocked")):

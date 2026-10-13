@@ -164,9 +164,8 @@ CAT_SORT = {"problem": 0, "in_progress": 1, "completed": 2, "other": 3}
 
 
 def is_done(b):
-    """A BL is 'done' once it has gated out from the ICD/Port."""
-    return (b.get("category") == "completed"
-            or bool((b.get("gate_out_date") or "").strip()))
+    """A BL is 'done' ONLY once it has gated out (completion = Gate Out)."""
+    return b.get("category") == "completed"
 
 
 def build_summary_text(lang=None):
@@ -522,10 +521,9 @@ def sync_tanesw(only_open=True):
     rows = db.list_bls()
     changes = tesws.sync_rows(rows, only_open=only_open)
     for ch in changes:
-        db.apply_tesws_update(ch["id"], ch["new"])
+        db.apply_tesws_update(ch["id"], ch["fields"])
     checked = sum(1 for r in rows
-                  if not (only_open and (r.get("category") == "completed"
-                                         or r.get("gate_out_date"))))
+                  if not (only_open and r.get("category") == "completed"))
     return ({"checked": checked, "updated": len(changes), "total": len(rows)},
             changes)
 
@@ -569,13 +567,31 @@ def build_changes_text(changes, lang=None):
         return (f"<b>{t('tg_sync_header', lang)}</b>\n\n"
                 f"{t('tg_sync_none', lang)}\n\n{t('tg_time', lang)}: {now}")
     lines = [f"<b>{t('tg_sync_header', lang)}</b>", ""]
+
+    # Highlight newly-manifested BLs first (these just got a manifest date).
+    newly = [c for c in changes if c.get("new_manifest")]
+    if newly:
+        lines.append(f"\U0001F195 <b>{t('tg_new_manifest', lang)}</b>")
+        for ch in newly[:30]:
+            client = html.escape(ch.get("client") or "-")
+            bl_no = html.escape(ch.get("bl_no") or "")
+            mdate = html.escape(str(ch["changes"]["manifest_date"][1]))
+            lines.append(f"   \U0001F4C5 {client} — {bl_no} ({mdate})")
+        lines.append("")
+
     for ch in changes[:40]:
+        detail = []
+        for field, (old, new) in ch["changes"].items():
+            if field == "category" or not new:  # internal / cleared values
+                continue
+            lbl = _FIELD_LABELS.get(field, field)
+            detail.append(f"   {html.escape(lbl)}: {html.escape(str(new))}")
+        if not detail:
+            continue
         client = html.escape(ch.get("client") or "-")
         bl_no = html.escape(ch.get("bl_no") or "")
         lines.append(f"\U0001F504 <b>{client}</b> — {bl_no}")
-        for field, (old, new) in ch["changes"].items():
-            lbl = _FIELD_LABELS.get(field, field)
-            lines.append(f"   {html.escape(lbl)}: {html.escape(str(new))}")
+        lines.extend(detail)
         lines.append("")
     lines.append(f"{t('tg_time', lang)}: {now}")
     text = "\n".join(lines)

@@ -37,8 +37,8 @@ def _s(text):
 
 
 def _is_done(b):
-    return (b.get("category") == "completed"
-            or bool((b.get("gate_out_date") or "").strip()))
+    # Completion = Gate Out only (same rule as the app).
+    return b.get("category") == "completed"
 
 
 class _PDF(FPDF):

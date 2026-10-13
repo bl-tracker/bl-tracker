@@ -131,6 +131,7 @@ STRINGS = {
                        "en": "\U0001F504 New updates from TANeSW"},
     "tg_sync_none": {"sw": "Hakuna mabadiliko mapya kwa sasa.",
                      "en": "No new changes right now."},
+    "tg_new_manifest": {"sw": "ZIMEMANIFEST SASA", "en": "JUST MANIFESTED"},
     "sync_now": {"sw": "\U0001F504 Sasisha kutoka TANeSW", "en": "\U0001F504 Sync from TANeSW"},
     "sync_done": {"sw": "Imesasishwa: {updated} kati ya {checked} zilizoangaliwa.",
                   "en": "Updated {updated} of {checked} checked."},

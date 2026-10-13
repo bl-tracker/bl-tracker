@@ -45,10 +45,15 @@ RELEASE_CODES  = ("T04",)         # TANSAD Declaration Release
 GATE_OUT_CODES = ("C62", "C60")   # Gate Out Confirm End / Start (ya mwisho = kutoka ICD)
 
 
+def _is_gate_out(status):
+    """A BL is complete ONLY when its current status is Gate Out."""
+    s = (status or "").lower()
+    return "gate out" in s or "get out" in s
+
+
 def _infer_category(status):
     s = (status or "").lower()
-    if any(k in s for k in ("gate out", "get out", "carry out", "delivered",
-                            "handover report end", "completed")):
+    if _is_gate_out(status):
         return "completed"
     if any(k in s for k in ("suspect", "target", "overstay", "query", "hold",
                             "problem", "rejected", "blocked", "cancel")):
@@ -125,6 +130,10 @@ def map_fields(content, agent_map=None):
     # s/line = Shipping Agent (shagCd -> name); fall back to carrier, then code.
     shag = str(content.get("shagCd") or "").strip().upper()
     shipping_line = agent_map.get(shag, "") or content.get("carrNm") or shag or ""
+    # Complete ONLY when the CURRENT status is Gate Out. An earlier gate-out at
+    # the port (on the way to the ICD) is NOT completion, so we only record the
+    # gate-out date when the BL has truly finished.
+    done = _is_gate_out(status)
     return {
         "status": status,
         "category": _infer_category(status),
@@ -134,7 +143,7 @@ def map_fields(content, agent_map=None):
         "manifest_date": _milestone(plist, MANIFEST_CODES),
         "carry_in_date": _milestone(plist, CARRY_IN_CODES),
         "release_date": _milestone(plist, RELEASE_CODES),
-        "gate_out_date": _milestone(plist, GATE_OUT_CODES),
+        "gate_out_date": _milestone(plist, GATE_OUT_CODES) if done else "",
     }
 
 
@@ -177,17 +186,16 @@ def sync_rows(rows, delay=0.2, only_open=True):
     TRACK = ("status", "category", "vessel", "shipping_line", "icd",
              "manifest_date", "carry_in_date", "release_date", "gate_out_date")
     for r in rows:
-        if only_open and (r.get("category") == "completed" or r.get("gate_out_date")):
+        if only_open and r.get("category") == "completed":
             continue
         fields = fetch_bl(r.get("bl_no"), session=sess, agent_map=amap)
         if not fields:
             continue
         changes = {}
         for k in TRACK:
-            new = fields.get(k, "")
-            old = r.get(k) or ""
-            # usifute thamani iliyopo kwa tupu kutoka TANeSW
-            if new and str(new) != str(old):
+            new = str(fields.get(k, "") or "")
+            old = str(r.get(k) or "")
+            if new != old:  # record real changes AND clears (TANeSW is authoritative)
                 changes[k] = (old, new)
         if changes:
             out.append({
@@ -196,7 +204,11 @@ def sync_rows(rows, delay=0.2, only_open=True):
                 "client": r.get("client"),
                 "agent": r.get("agent"),
                 "changes": changes,
-                "new": {k: fields.get(k, "") for k in TRACK if fields.get(k)},
+                # newly manifested = manifest date appeared where there was none
+                "new_manifest": ("manifest_date" in changes
+                                 and not changes["manifest_date"][0]
+                                 and changes["manifest_date"][1]),
+                "fields": fields,  # full authoritative field set to apply
             })
         if delay:
             time.sleep(delay)

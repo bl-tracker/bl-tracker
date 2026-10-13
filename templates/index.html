@@ -21,7 +21,7 @@
   <div class="bl-meta">
     {% set ref = bl.manifest_date or bl.carry_in_date or bl.bl_date %}
     {% set d = days_since(ref) %}
-    {% if d is not none and d >= 0 and bl.category != 'completed' and not bl.gate_out_date %}
+    {% if d is not none and d >= 0 and bl.category != 'completed' %}
       {% set over = d >= overstay_days %}
       <span class="chip {{ 'over' if over }}">{% if over %}⚠️ {{ t('overstay') }} · {% endif %}⏳ {{ d }} {{ t('days') }} {{ t('at_port') }}</span>
     {% endif %}
