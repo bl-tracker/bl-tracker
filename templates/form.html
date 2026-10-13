@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="formwrap">
+  <h2>{{ t('add_title') if mode == 'add' else t('edit_title') }}</h2>
+
+  <form method="post" action="{{ url_for('add') if mode == 'add' else url_for('edit', bl_id=bl_id) }}" class="blform">
+    <label>
+      {{ t('bl_no') }} <span class="req">*</span>
+      <input type="text" name="bl_no" value="{{ bl.bl_no or '' }}" required class="mono">
+    </label>
+
+    <label>
+      {{ t('client') }}
+      <input type="text" name="client" value="{{ bl.client or '' }}">
+    </label>
+
+    <label>
+      {{ t('shipping_line') }}
+      <input type="text" name="shipping_line" value="{{ bl.shipping_line or '' }}">
+    </label>
+
+    <label>
+      {{ t('status') }}
+      <input type="text" name="status" value="{{ bl.status or '' }}">
+    </label>
+
+    <label>
+      {{ t('category') }}
+      <select name="category">
+        {% set cur = bl.category or 'in_progress' %}
+        <option value="completed" {{ 'selected' if cur=='completed' }}>{{ t('completed') }}</option>
+        <option value="in_progress" {{ 'selected' if cur=='in_progress' }}>{{ t('in_progress') }}</option>
+        <option value="problem" {{ 'selected' if cur=='problem' }}>{{ t('problem') }}</option>
+        <option value="other" {{ 'selected' if cur=='other' }}>{{ t('other') }}</option>
+      </select>
+    </label>
+
+    <label>
+      {{ t('bl_date') }}
+      <input type="date" name="bl_date" value="{{ bl.bl_date or '' }}">
+    </label>
+
+    <label class="full">
+      {{ t('notes') }}
+      <textarea name="notes" rows="3">{{ bl.notes or '' }}</textarea>
+    </label>
+
+    <div class="formactions">
+      <button type="submit" class="btn btn-primary">{{ t('save') }}</button>
+      <a href="{{ url_for('index') }}" class="btn btn-ghost">{{ t('cancel') }}</a>
+    </div>
+  </form>
+</section>
+
+{% endblock %}

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t('app_title') }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a href="{{ url_for('index') }}">
+        <span class="logo">📦</span>
+        <span>{{ t('app_title') }}</span>
+      </a>
+    </div>
+    <nav>
+      <a href="{{ url_for('index') }}">{{ t('nav_list') }}</a>
+      <a href="{{ url_for('add') }}" class="btn btn-sm">+ {{ t('nav_add') }}</a>
+      <a class="lang" href="{{ url_for('set_lang', lang='en' if lang=='sw' else 'sw') }}">{{ t('lang_switch') }}</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="flash flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="foot">
+    <span>{{ t('tagline') }}</span>
+  </footer>
+</body>
+</html>

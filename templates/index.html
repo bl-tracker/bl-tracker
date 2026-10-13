@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="summary">
+  <h2>{{ t('summary_title') }}</h2>
+  <div class="cards">
+    <div class="card card-total"><span class="num">{{ counts.total }}</span><span class="lbl">{{ t('total') }}</span></div>
+    <div class="card card-ok"><span class="num">{{ counts.completed }}</span><span class="lbl">{{ t('completed') }}</span></div>
+    <div class="card card-prog"><span class="num">{{ counts.in_progress }}</span><span class="lbl">{{ t('in_progress') }}</span></div>
+    <div class="card card-prob"><span class="num">{{ counts.problem }}</span><span class="lbl">{{ t('problem') }}</span></div>
+    <div class="card card-other"><span class="num">{{ counts.other }}</span><span class="lbl">{{ t('other') }}</span></div>
+  </div>
+  <form method="post" action="{{ url_for('send_summary') }}" class="summary-send">
+    <button type="submit" class="btn btn-ghost">✈️ {{ t('send_summary_now') }}</button>
+  </form>
+</section>
+
+<section class="list">
+  <form method="get" action="{{ url_for('index') }}" class="searchbar">
+    <input type="text" name="q" value="{{ search }}" placeholder="{{ t('search_placeholder') }}">
+    <button type="submit" class="btn">{{ t('search') }}</button>
+  </form>
+
+  {% if bls %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ t('bl_no') }}</th>
+          <th>{{ t('client') }}</th>
+          <th>{{ t('shipping_line') }}</th>
+          <th>{{ t('status') }}</th>
+          <th>{{ t('category') }}</th>
+          <th>{{ t('bl_date') }}</th>
+          <th class="col-actions">{{ t('actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bl in bls %}
+        <tr>
+          <td data-label="{{ t('bl_no') }}" class="mono">{{ bl.bl_no }}</td>
+          <td data-label="{{ t('client') }}">{{ bl.client }}</td>
+          <td data-label="{{ t('shipping_line') }}">{{ bl.shipping_line }}</td>
+          <td data-label="{{ t('status') }}">{{ bl.status }}</td>
+          <td data-label="{{ t('category') }}">
+            <span class="badge badge-{{ bl.category }}">{{ cat_label(bl.category) }}</span>
+          </td>
+          <td data-label="{{ t('bl_date') }}">{{ bl.bl_date }}</td>
+          <td data-label="{{ t('actions') }}" class="col-actions">
+            <a href="{{ url_for('edit', bl_id=bl.id) }}" class="btn btn-sm">{{ t('edit') }}</a>
+            <form method="post" action="{{ url_for('delete', bl_id=bl.id) }}" style="display:inline"
+                  onsubmit="return confirm('{{ t('confirm_delete') }}')">
+              <button type="submit" class="btn btn-sm btn-danger">{{ t('delete') }}</button>
+            </form>
+          </td>
+        </tr>
+        {% if bl.notes %}
+        <tr class="notes-row"><td colspan="7" data-label="{{ t('notes') }}">📝 {{ bl.notes }}</td></tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">{{ t('no_records') }}</p>
+  {% endif %}
+</section>
+
+{% endblock %}
