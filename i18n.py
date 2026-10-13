@@ -133,6 +133,10 @@ STRINGS = {
     "sync_now": {"sw": "\U0001F504 Sasisha kutoka TANeSW", "en": "\U0001F504 Sync from TANeSW"},
     "sync_done": {"sw": "Imesasishwa: {updated} kati ya {checked} zilizoangaliwa.",
                   "en": "Updated {updated} of {checked} checked."},
+    "sync_started": {"sw": "Usasishaji umeanza nyuma — subiri dakika moja, kisha refresh. Utapokea Telegram kukiwa na mabadiliko.",
+                     "en": "Sync started in the background — wait a minute, then refresh. You'll get a Telegram note if anything changed."},
+    "sync_running": {"sw": "Usasishaji tayari unaendelea — subiri kidogo.",
+                     "en": "A sync is already running — please wait."},
 
     # Documents / upload
     "nav_import": {"sw": "Upload Excel", "en": "Upload Excel"},

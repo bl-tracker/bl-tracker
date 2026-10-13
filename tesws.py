@@ -95,7 +95,7 @@ def map_fields(content):
     }
 
 
-def fetch_bl(bl_no, session=None, timeout=30):
+def fetch_bl(bl_no, session=None, timeout=12):
     """
     Rudisha dict ya sehemu zilizo-map kwa BL moja, au None ikiwa TANeSW
     haina rekodi (content:0) au kuna hitilafu.
@@ -119,7 +119,7 @@ def fetch_bl(bl_no, session=None, timeout=30):
     return map_fields(content)
 
 
-def sync_rows(rows, delay=0.3, only_open=True):
+def sync_rows(rows, delay=0.2, only_open=True):
     """
     Pokea rekodi (dict zenye 'id','bl_no','category', n.k.), piga TANeSW kwa kila
     moja, na rudisha orodha ya mabadiliko:

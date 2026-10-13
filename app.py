@@ -502,6 +502,12 @@ _FIELD_LABELS = {
 }
 
 
+import threading
+
+_sync_lock = threading.Lock()
+_sync_state = {"running": False, "last": None}
+
+
 def sync_tanesw(only_open=True):
     """Fetch live details from TANeSW for each BL and apply changes.
     Returns (result_dict, changes_list)."""
@@ -514,6 +520,38 @@ def sync_tanesw(only_open=True):
                                          or r.get("gate_out_date"))))
     return ({"checked": checked, "updated": len(changes), "total": len(rows)},
             changes)
+
+
+def _sync_worker(only_open, do_notify):
+    """Run the sync off the request thread (TANeSW has many BLs; this can take
+    a minute). Sends a Telegram note when something changed, or on error."""
+    try:
+        result, changes = sync_tanesw(only_open=only_open)
+        if do_notify and changes:
+            send_telegram(build_changes_text(changes))
+        _sync_state["last"] = {"ok": True, **result}
+    except Exception as e:  # never die silently — report to logs + Telegram
+        import traceback
+        traceback.print_exc()
+        _sync_state["last"] = {"ok": False, "error": str(e)}
+        try:
+            send_telegram(f"⚠️ TANeSW sync error: {html.escape(str(e))[:300]}")
+        except Exception:
+            pass
+    finally:
+        _sync_state["running"] = False
+
+
+def start_sync(only_open=True, do_notify=True):
+    """Kick off a background sync if one isn't already running.
+    Returns True if started, False if one was already in progress."""
+    with _sync_lock:
+        if _sync_state["running"]:
+            return False
+        _sync_state["running"] = True
+    threading.Thread(target=_sync_worker, args=(only_open, do_notify),
+                     daemon=True).start()
+    return True
 
 
 def build_changes_text(changes, lang=None):
@@ -559,12 +597,9 @@ def summary_json():
 def tasks_sync():
     if NOTIFY_TOKEN and request.args.get("token") != NOTIFY_TOKEN:
         return {"ok": False, "error": "unauthorized"}, 401
-    only_open = request.args.get("all") != "1"
-    result, changes = sync_tanesw(only_open=only_open)
-    # send a Telegram note only when something actually changed, unless muted
-    if changes and request.args.get("notify") != "0":
-        send_telegram(build_changes_text(changes))
-    return {"ok": True, **result}
+    started = start_sync(only_open=request.args.get("all") != "1",
+                         do_notify=request.args.get("notify") != "0")
+    return {"ok": True, "started": started, "last": _sync_state.get("last")}
 
 
 # ----- Manual sync button (from the BL page) -----
@@ -572,11 +607,8 @@ def tasks_sync():
 @login_required
 def sync_now():
     lang = current_lang()
-    result, changes = sync_tanesw(only_open=request.form.get("all") != "1")
-    if changes:
-        send_telegram(build_changes_text(changes))
-    flash(t("sync_done", lang).format(updated=result["updated"],
-                                      checked=result["checked"]), "ok")
+    started = start_sync(only_open=request.form.get("all") != "1", do_notify=True)
+    flash(t("sync_started" if started else "sync_running", lang), "ok")
     return redirect(url_for("bl"))
 
 
