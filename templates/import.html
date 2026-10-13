@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="formwrap">
+  <h2>{{ t('import_title') }}</h2>
+  <p class="muted">{{ t('import_intro') }}</p>
+
+  <div class="import-help">
+    <strong>{{ t('import_columns') }}</strong>
+    <code>bl_no, client, agent, shipping_line, status, category, bl_date, notes</code>
+    <p class="muted">{{ t('import_cat_note') }}</p>
+    <a href="{{ url_for('template_csv') }}" class="btn btn-sm">⬇ {{ t('download_template') }}</a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" action="{{ url_for('import_bls') }}" class="blform">
+    <label class="full">
+      {{ t('choose_file') }}
+      <input type="file" name="file" accept=".xlsx,.csv" required>
+    </label>
+    <div class="formactions">
+      <button type="submit" class="btn btn-primary">{{ t('upload') }}</button>
+      <a href="{{ url_for('index') }}" class="btn btn-ghost">{{ t('cancel') }}</a>
+    </div>
+  </form>
+</section>
+
+{% endblock %}

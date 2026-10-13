@@ -18,6 +18,14 @@
 <section class="list">
   <form method="get" action="{{ url_for('index') }}" class="searchbar">
     <input type="text" name="q" value="{{ search }}" placeholder="{{ t('search_placeholder') }}">
+    {% if agents %}
+    <select name="agent" onchange="this.form.submit()">
+      <option value="">{{ t('all_agents') }}</option>
+      {% for a in agents %}
+        <option value="{{ a }}" {{ 'selected' if a == agent }}>{{ a }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
     <button type="submit" class="btn">{{ t('search') }}</button>
   </form>
 
@@ -28,6 +36,7 @@
         <tr>
           <th>{{ t('bl_no') }}</th>
           <th>{{ t('client') }}</th>
+          <th>{{ t('agent') }}</th>
           <th>{{ t('shipping_line') }}</th>
           <th>{{ t('status') }}</th>
           <th>{{ t('category') }}</th>
@@ -40,6 +49,7 @@
         <tr>
           <td data-label="{{ t('bl_no') }}" class="mono">{{ bl.bl_no }}</td>
           <td data-label="{{ t('client') }}">{{ bl.client }}</td>
+          <td data-label="{{ t('agent') }}">{{ bl.agent }}</td>
           <td data-label="{{ t('shipping_line') }}">{{ bl.shipping_line }}</td>
           <td data-label="{{ t('status') }}">{{ bl.status }}</td>
           <td data-label="{{ t('category') }}">
@@ -47,6 +57,9 @@
           </td>
           <td data-label="{{ t('bl_date') }}">{{ bl.bl_date }}</td>
           <td data-label="{{ t('actions') }}" class="col-actions">
+            {% if bl.id in doc_ids %}
+            <a href="{{ url_for('document', bl_id=bl.id) }}" target="_blank" class="btn btn-sm" title="{{ t('view_doc') }}">📎</a>
+            {% endif %}
             <a href="{{ url_for('edit', bl_id=bl.id) }}" class="btn btn-sm">{{ t('edit') }}</a>
             <form method="post" action="{{ url_for('delete', bl_id=bl.id) }}" style="display:inline"
                   onsubmit="return confirm('{{ t('confirm_delete') }}')">
@@ -55,7 +68,7 @@
           </td>
         </tr>
         {% if bl.notes %}
-        <tr class="notes-row"><td colspan="7" data-label="{{ t('notes') }}">📝 {{ bl.notes }}</td></tr>
+        <tr class="notes-row"><td colspan="8" data-label="{{ t('notes') }}">📝 {{ bl.notes }}</td></tr>
         {% endif %}
         {% endfor %}
       </tbody>

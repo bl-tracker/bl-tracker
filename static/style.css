@@ -75,9 +75,11 @@ h2 { font-size: 1.15rem; margin: 0 0 .8rem; }
 .summary-send { margin-top: .9rem; }
 
 /* Search */
-.searchbar { display: flex; gap: .5rem; margin-bottom: 1rem; }
-.searchbar input { flex: 1; padding: .5rem .7rem; border: 1px solid var(--line);
+.searchbar { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.searchbar input { flex: 1; min-width: 160px; padding: .5rem .7rem; border: 1px solid var(--line);
   border-radius: 8px; font-size: .95rem; }
+.searchbar select { padding: .5rem .7rem; border: 1px solid var(--line);
+  border-radius: 8px; font-size: .95rem; background: var(--surface); }
 
 /* Table */
 .table-wrap { background: var(--surface); border: 1px solid var(--line);
@@ -118,6 +120,13 @@ tbody tr:last-child { border-bottom: none; }
   padding: .5rem .7rem; border: 1px solid var(--line); border-radius: 8px; font-size: .95rem; font-family: inherit; }
 .blform .req { color: var(--prob); }
 .formactions { grid-column: 1 / -1; display: flex; gap: .7rem; margin-top: .3rem; }
+
+.muted { color: var(--muted); font-size: .9rem; }
+.hint { color: var(--muted); font-size: .8rem; font-weight: 400; }
+.import-help { background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 1rem 1.2rem; margin-bottom: 1.2rem; box-shadow: var(--shadow); }
+.import-help code { display: block; background: #f1f5f9; padding: .5rem .7rem; border-radius: 8px;
+  margin: .5rem 0; font-size: .85rem; overflow-x: auto; }
 
 .foot { text-align: center; color: var(--muted); font-size: .82rem; padding: 1.5rem; }
 
