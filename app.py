@@ -19,6 +19,7 @@ from flask import (
 )
 
 import db
+import tesws
 from carriers import detect_shipping_line
 
 app = Flask(__name__)
@@ -472,6 +473,50 @@ def report_pdf():
     return resp
 
 
+# ----- TANeSW auto-sync -----
+_FIELD_LABELS = {
+    "status": "Status", "vessel": "Vessel", "shipping_line": "S/Line",
+    "icd": "ICD", "manifest_date": "Manifest", "carry_in_date": "Carry-in",
+    "release_date": "Release", "gate_out_date": "Gate-out",
+}
+
+
+def sync_tanesw(only_open=True):
+    """Fetch live details from TANeSW for each BL and apply changes.
+    Returns (result_dict, changes_list)."""
+    rows = db.list_bls()
+    changes = tesws.sync_rows(rows, only_open=only_open)
+    for ch in changes:
+        db.apply_tesws_update(ch["id"], ch["new"])
+    checked = sum(1 for r in rows
+                  if not (only_open and (r.get("category") == "completed"
+                                         or r.get("gate_out_date"))))
+    return ({"checked": checked, "updated": len(changes), "total": len(rows)},
+            changes)
+
+
+def build_changes_text(changes, lang=None):
+    lang = lang or NOTIFY_LANG
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    if not changes:
+        return (f"<b>{t('tg_sync_header', lang)}</b>\n\n"
+                f"{t('tg_sync_none', lang)}\n\n{t('tg_time', lang)}: {now}")
+    lines = [f"<b>{t('tg_sync_header', lang)}</b>", ""]
+    for ch in changes[:40]:
+        client = html.escape(ch.get("client") or "-")
+        bl_no = html.escape(ch.get("bl_no") or "")
+        lines.append(f"\U0001F504 <b>{client}</b> — {bl_no}")
+        for field, (old, new) in ch["changes"].items():
+            lbl = _FIELD_LABELS.get(field, field)
+            lines.append(f"   {html.escape(lbl)}: {html.escape(str(new))}")
+        lines.append("")
+    lines.append(f"{t('tg_time', lang)}: {now}")
+    text = "\n".join(lines)
+    if len(text) > 3800:
+        text = text[:3800].rsplit("\n", 1)[0] + "\n…"
+    return text
+
+
 # ----- Notify endpoint for external cron (every 3 hours) -----
 @app.route("/tasks/notify")
 def tasks_notify():
@@ -486,6 +531,44 @@ def summary_json():
     if NOTIFY_TOKEN and request.args.get("token") != NOTIFY_TOKEN:
         return {"ok": False, "error": "unauthorized"}, 401
     return {"ok": True, "counts": db.summary_counts()}
+
+
+# ----- TANeSW sync endpoint for external cron (e.g. hourly) -----
+@app.route("/tasks/sync")
+def tasks_sync():
+    if NOTIFY_TOKEN and request.args.get("token") != NOTIFY_TOKEN:
+        return {"ok": False, "error": "unauthorized"}, 401
+    only_open = request.args.get("all") != "1"
+    result, changes = sync_tanesw(only_open=only_open)
+    # send a Telegram note only when something actually changed, unless muted
+    if changes and request.args.get("notify") != "0":
+        send_telegram(build_changes_text(changes))
+    return {"ok": True, **result}
+
+
+# ----- Manual sync button (from the BL page) -----
+@app.route("/sync", methods=["POST"])
+@login_required
+def sync_now():
+    lang = current_lang()
+    result, changes = sync_tanesw(only_open=request.form.get("all") != "1")
+    if changes:
+        send_telegram(build_changes_text(changes))
+    flash(t("sync_done", lang).format(updated=result["updated"],
+                                      checked=result["checked"]), "ok")
+    return redirect(url_for("bl"))
+
+
+# ----- Debug: raw TANeSW mapped fields for one BL (token) -----
+@app.route("/tesws/raw")
+def tesws_raw():
+    if NOTIFY_TOKEN and request.args.get("token") != NOTIFY_TOKEN:
+        return {"ok": False, "error": "unauthorized"}, 401
+    bl = request.args.get("bl", "").strip()
+    if not bl:
+        return {"ok": False, "error": "pass ?bl=<BL number>"}, 400
+    fields = tesws.fetch_bl(bl)
+    return {"ok": True, "bl_no": bl, "found": fields is not None, "fields": fields}
 
 
 @app.route("/health")

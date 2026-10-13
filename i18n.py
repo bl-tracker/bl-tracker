@@ -120,6 +120,13 @@ STRINGS = {
     # Telegram message
     "tg_header": {"sw": "\U0001F4E6 Muhtasari wa BL", "en": "\U0001F4E6 BL Summary"},
     "tg_time": {"sw": "Muda", "en": "Time"},
+    "tg_sync_header": {"sw": "\U0001F504 Mabadiliko mapya kutoka TANeSW",
+                       "en": "\U0001F504 New updates from TANeSW"},
+    "tg_sync_none": {"sw": "Hakuna mabadiliko mapya kwa sasa.",
+                     "en": "No new changes right now."},
+    "sync_now": {"sw": "\U0001F504 Sasisha kutoka TANeSW", "en": "\U0001F504 Sync from TANeSW"},
+    "sync_done": {"sw": "Imesasishwa: {updated} kati ya {checked} zilizoangaliwa.",
+                  "en": "Updated {updated} of {checked} checked."},
 
     # Documents / upload
     "nav_import": {"sw": "Upload Excel", "en": "Upload Excel"},

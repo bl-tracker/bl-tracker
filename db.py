@@ -176,6 +176,29 @@ def update_bl(bl_id, data):
         conn.execute(sa_update(bls).where(bls.c.id == bl_id).values(**values))
 
 
+TESWS_FIELDS = ("status", "category", "vessel", "shipping_line", "icd",
+                "manifest_date", "carry_in_date", "release_date", "gate_out_date")
+
+
+def apply_tesws_update(bl_id, fields):
+    """Partial update: only the TANeSW-sourced fields (never touches
+    client/agent/notes/bl_date). Always stamps last_checked."""
+    values = {"last_checked": _now(), "updated_at": _now()}
+    for k in TESWS_FIELDS:
+        if k in fields and fields[k] not in (None, ""):
+            values[k] = (_norm_category(fields[k]) if k == "category"
+                         else str(fields[k]).strip())
+    with engine.begin() as conn:
+        conn.execute(sa_update(bls).where(bls.c.id == bl_id).values(**values))
+
+
+def mark_checked(bl_id):
+    """Stamp last_checked without changing data (BL had no TANeSW record)."""
+    with engine.begin() as conn:
+        conn.execute(sa_update(bls).where(bls.c.id == bl_id)
+                     .values(last_checked=_now()))
+
+
 def delete_bl(bl_id):
     with engine.begin() as conn:
         conn.execute(sa_delete(bl_documents).where(bl_documents.c.bl_id == bl_id))

@@ -19,6 +19,9 @@
     <div class="card card-other"><span class="num">{{ counts.other }}</span><span class="lbl">{{ t('other') }}</span></div>
   </div>
   <div class="summary-send">
+    <form method="post" action="{{ url_for('sync_now') }}" style="display:inline">
+      <button type="submit" class="btn btn-primary">{{ t('sync_now') }}</button>
+    </form>
     <form method="post" action="{{ url_for('send_summary') }}" style="display:inline">
       <button type="submit" class="btn btn-ghost">✈️ {{ t('send_summary_now') }}</button>
     </form>
