@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="hero">
+  <div class="hero-text">
+    <p class="hero-kicker">{{ t('slogan') }}</p>
+    <h1 class="hero-title">{{ t('w_welcome') }} <span>{{ t('brand') }}</span></h1>
+    <p class="hero-intro">{{ t('w_intro') }}</p>
+    <div class="hero-cta">
+      <a href="{{ url_for('bl') }}" class="btn btn-primary btn-lg">{{ t('w_track_btn') }}</a>
+      <a href="#contact" class="btn btn-lg btn-outline">{{ t('w_contact_btn') }}</a>
+    </div>
+  </div>
+  <div class="hero-media">
+    <img src="{{ url_for('static', filename='hero.jpg') }}" alt="D-SERVICES" class="hero-img">
+  </div>
+</section>
+
+<section class="services">
+  <h2 class="section-title">{{ t('w_services') }}</h2>
+  <div class="svc-grid">
+    <div class="svc"><span class="svc-ico">📥</span><h3>{{ t('svc_import') }}</h3><p>{{ t('svc_import_d') }}</p></div>
+    <div class="svc"><span class="svc-ico">📤</span><h3>{{ t('svc_export') }}</h3><p>{{ t('svc_export_d') }}</p></div>
+    <div class="svc"><span class="svc-ico">🚚</span><h3>{{ t('svc_transit') }}</h3><p>{{ t('svc_transit_d') }}</p></div>
+    <div class="svc"><span class="svc-ico">🏬</span><h3>{{ t('svc_bond') }}</h3><p>{{ t('svc_bond_d') }}</p></div>
+    <div class="svc"><span class="svc-ico">📦</span><h3>{{ t('svc_exbond') }}</h3><p>{{ t('svc_exbond_d') }}</p></div>
+    <div class="svc"><span class="svc-ico">🚗</span><h3>{{ t('svc_vehicles') }}</h3><p>{{ t('svc_vehicles_d') }}</p></div>
+  </div>
+</section>
+
+<section class="video-sec">
+  <h2 class="section-title">{{ t('w_video') }}</h2>
+  <div class="video-frame">
+    <video src="{{ url_for('static', filename='intro.mp4') }}" autoplay muted loop playsinline></video>
+  </div>
+</section>
+
+<section class="contact" id="contact">
+  <h2 class="section-title">{{ t('w_contact') }}</h2>
+  <div class="contact-grid">
+    <div class="contact-card">
+      <span class="c-ico">📍</span>
+      <div><strong>{{ t('c_address') }}</strong><p>Floor no. 7, Equity Bank, Kariakoo,<br>Ilala, Dar es Salaam</p></div>
+    </div>
+    <div class="contact-card">
+      <span class="c-ico">📞</span>
+      <div><strong>{{ t('c_phone') }}</strong>
+        <p><a href="tel:+255629600647">+255 629 600 647</a><br>
+           <a href="tel:+255796340770">+255 796 340 770</a> (Norma)</p></div>
+    </div>
+    <div class="contact-card">
+      <span class="c-ico">✉️</span>
+      <div><strong>{{ t('c_email') }}</strong>
+        <p><a href="mailto:magesadb@gmail.com">magesadb@gmail.com</a><br>
+           <a href="mailto:dservicesgroup@outlook.com">dservicesgroup@outlook.com</a></p></div>
+    </div>
+    <div class="contact-card">
+      <span class="c-ico">🕗</span>
+      <div><strong>{{ t('c_hours') }}</strong><p>{{ t('c_hours_val') }}</p></div>
+    </div>
+  </div>
+  <a href="https://wa.me/255796340770" target="_blank" class="btn btn-wa btn-lg">💬 {{ t('c_whatsapp_btn') }}</a>
+</section>
+
+{% endblock %}

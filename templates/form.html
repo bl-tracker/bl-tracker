@@ -49,6 +49,31 @@
       <input type="date" name="bl_date" value="{{ bl.bl_date or '' }}">
     </label>
 
+    <label>
+      {{ t('icd') }}
+      <input type="text" name="icd" value="{{ bl.icd or '' }}">
+    </label>
+
+    <label>
+      {{ t('manifest_date') }}
+      <input type="date" name="manifest_date" value="{{ bl.manifest_date or '' }}">
+    </label>
+
+    <label>
+      {{ t('carry_in_date') }}
+      <input type="date" name="carry_in_date" value="{{ bl.carry_in_date or '' }}">
+    </label>
+
+    <label>
+      {{ t('release_date') }}
+      <input type="date" name="release_date" value="{{ bl.release_date or '' }}">
+    </label>
+
+    <label>
+      {{ t('gate_out_date') }}
+      <input type="date" name="gate_out_date" value="{{ bl.gate_out_date or '' }}">
+    </label>
+
     <label class="full">
       {{ t('notes') }}
       <textarea name="notes" rows="3">{{ bl.notes or '' }}</textarea>
@@ -67,7 +92,7 @@
 
     <div class="formactions">
       <button type="submit" class="btn btn-primary">{{ t('save') }}</button>
-      <a href="{{ url_for('index') }}" class="btn btn-ghost">{{ t('cancel') }}</a>
+      <a href="{{ url_for('bl') }}" class="btn btn-ghost">{{ t('cancel') }}</a>
     </div>
   </form>
 </section>

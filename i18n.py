@@ -2,10 +2,46 @@
 
 STRINGS = {
     "app_title": {"sw": "Mfumo wa Kufuatilia BL", "en": "BL Tracker"},
-    "tagline": {"sw": "Fuatilia taarifa za Bill of Lading", "en": "Track your Bill of Lading records"},
+    "brand": {"sw": "D-SERVICES OPERATION", "en": "D-SERVICES OPERATION"},
+    "slogan": {"sw": "Fast. Accurate. Trusted.", "en": "Fast. Accurate. Trusted."},
+    "tagline": {"sw": "Clearing & Forwarding, Dar es Salaam", "en": "Clearing & Forwarding, Dar es Salaam"},
+    "nav_home": {"sw": "Mwanzo", "en": "Home"},
+    "nav_tracker": {"sw": "BL Tracker", "en": "BL Tracker"},
     "nav_list": {"sw": "Orodha ya BL", "en": "BL List"},
     "nav_add": {"sw": "Ongeza BL", "en": "Add BL"},
     "lang_switch": {"sw": "English", "en": "Kiswahili"},
+
+    # Welcome / landing page
+    "w_welcome": {"sw": "Karibu", "en": "Welcome to"},
+    "w_intro": {
+        "sw": "Wataalam wa clearing & forwarding Dar es Salaam. Tunakuondoshea mizigo yako bandarini na uwanja wa ndege kwa haraka, usahihi na uaminifu — magari, makontena na mizigo ya aina zote.",
+        "en": "Clearing & forwarding experts in Dar es Salaam. We clear your cargo at the port and airport with speed, accuracy and trust — vehicles, containers and all cargo types.",
+    },
+    "w_track_btn": {"sw": "Fuatilia BL", "en": "Track your BL"},
+    "w_contact_btn": {"sw": "Wasiliana nasi", "en": "Contact us"},
+    "w_video": {"sw": "Tazama kazi zetu", "en": "See our work"},
+    "w_services": {"sw": "Huduma Zetu", "en": "Our Services"},
+    "svc_import": {"sw": "Import", "en": "Import"},
+    "svc_import_d": {"sw": "Uondoshaji wa mizigo inayoingia nchini.", "en": "Clearing cargo coming into the country."},
+    "svc_export": {"sw": "Export", "en": "Export"},
+    "svc_export_d": {"sw": "Usafirishaji wa mizigo kwenda nje ya nchi.", "en": "Handling cargo going out of the country."},
+    "svc_transit": {"sw": "Transit", "en": "Transit"},
+    "svc_transit_d": {"sw": "Mizigo inayopita kwenda nchi jirani.", "en": "Cargo in transit to neighbouring countries."},
+    "svc_bond": {"sw": "Bond", "en": "Bond"},
+    "svc_bond_d": {"sw": "Uhifadhi wa mizigo kwenye ghala la forodha (bonded).", "en": "Storage of goods in a customs bonded warehouse."},
+    "svc_exbond": {"sw": "EX-Bond", "en": "EX-Bond"},
+    "svc_exbond_d": {"sw": "Uondoshaji wa mizigo kutoka ghala la bond.", "en": "Clearing goods out of the bonded warehouse."},
+    "svc_vehicles": {"sw": "Magari & Makontena", "en": "Vehicles & Containers"},
+    "svc_vehicles_d": {"sw": "Clearing ya magari na makontena ya aina zote.", "en": "Clearing of vehicles and all container types."},
+
+    # Contact
+    "w_contact": {"sw": "Wasiliana Nasi", "en": "Contact Us"},
+    "c_address": {"sw": "Anuani", "en": "Address"},
+    "c_phone": {"sw": "Simu / WhatsApp", "en": "Phone / WhatsApp"},
+    "c_email": {"sw": "Barua pepe", "en": "Email"},
+    "c_hours": {"sw": "Saa za Kazi", "en": "Working Hours"},
+    "c_hours_val": {"sw": "Jumatatu – Jumapili: 08:30 – 18:00", "en": "Monday – Sunday: 08:30 – 18:00"},
+    "c_whatsapp_btn": {"sw": "Tuandikie WhatsApp", "en": "Message us on WhatsApp"},
 
     # Summary
     "summary_title": {"sw": "Muhtasari", "en": "Summary"},
@@ -15,6 +51,7 @@ STRINGS = {
     "problem": {"sw": "Zina tatizo", "en": "With problem"},
     "other": {"sw": "Nyingine", "en": "Other"},
     "send_summary_now": {"sw": "Tuma summary sasa (Telegram)", "en": "Send summary now (Telegram)"},
+    "print_pdf": {"sw": "Chapisha / Pakua PDF", "en": "Print / Download PDF"},
 
     # Table headers
     "bl_no": {"sw": "Namba ya BL", "en": "BL Number"},
@@ -26,6 +63,11 @@ STRINGS = {
     "status": {"sw": "Hali (Status)", "en": "Status"},
     "category": {"sw": "Kundi", "en": "Category"},
     "bl_date": {"sw": "Tarehe", "en": "Date"},
+    "icd": {"sw": "ICD/Port", "en": "ICD/Port"},
+    "manifest_date": {"sw": "Manifest", "en": "Manifest"},
+    "carry_in_date": {"sw": "Carry-in", "en": "Carry-in"},
+    "release_date": {"sw": "Release", "en": "Release"},
+    "gate_out_date": {"sw": "Gate-out", "en": "Gate-out"},
     "notes": {"sw": "Maelezo", "en": "Notes"},
     "actions": {"sw": "Vitendo", "en": "Actions"},
     "edit": {"sw": "Hariri", "en": "Edit"},
@@ -74,6 +116,10 @@ STRINGS = {
     "choose_file": {"sw": "Chagua faili", "en": "Choose file"},
     "upload": {"sw": "Pakia", "en": "Upload"},
     "import_ok": {"sw": "Rekodi {n} zimeongezwa.", "en": "{n} records imported."},
+    "import_ds_ok": {"sw": "Faili ya D-SERVICES imetambuliwa — rekodi {n} zimeingizwa.", "en": "D-SERVICES file recognised — {n} records imported."},
+    "import_ds_note": {"sw": "Ukipakia faili yako ya “D-SERVICES OPERATION Daily”, mfumo utaitambua wenyewe na kuchukua taarifa za msingi (kampuni, mteja, BL, status, ICD na tarehe) kutoka sheets za CNT na VEHICLE.", "en": "If you upload your “D-SERVICES OPERATION Daily” file, the system recognises it and pulls the essentials (company, client, BL, status, ICD and dates) from the CNT and VEHICLE sheets."},
+    "replace_label": {"sw": "Futa zote kwanza (badilisha na hizi mpya)", "en": "Clear all first (replace with these)"},
+    "replace_hint": {"sw": "Tumia hii kila siku ukipakia faili mpya ili kuepuka marudio.", "en": "Use this for a daily refresh to avoid duplicates."},
     "import_nofile": {"sw": "Tafadhali chagua faili kwanza.", "en": "Please choose a file first."},
     "import_badtype": {"sw": "Aina ya faili si sahihi. Tumia .xlsx au .csv.", "en": "Unsupported file type. Use .xlsx or .csv."},
     "import_error": {"sw": "Imeshindwa kusoma faili. Hakikisha muundo ni sahihi.", "en": "Could not read the file. Check its format."},

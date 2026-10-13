@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 
+<div class="page-head">
+  <h1 class="page-title">{{ t('nav_tracker') }}</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('add') }}" class="btn btn-primary btn-sm">+ {{ t('nav_add') }}</a>
+    <a href="{{ url_for('import_bls') }}" class="btn btn-sm">⬆ {{ t('nav_import') }}</a>
+  </div>
+</div>
+
 <section class="summary">
   <h2>{{ t('summary_title') }}</h2>
   <div class="cards">
@@ -10,13 +18,16 @@
     <div class="card card-prob"><span class="num">{{ counts.problem }}</span><span class="lbl">{{ t('problem') }}</span></div>
     <div class="card card-other"><span class="num">{{ counts.other }}</span><span class="lbl">{{ t('other') }}</span></div>
   </div>
-  <form method="post" action="{{ url_for('send_summary') }}" class="summary-send">
-    <button type="submit" class="btn btn-ghost">✈️ {{ t('send_summary_now') }}</button>
-  </form>
+  <div class="summary-send">
+    <form method="post" action="{{ url_for('send_summary') }}" style="display:inline">
+      <button type="submit" class="btn btn-ghost">✈️ {{ t('send_summary_now') }}</button>
+    </form>
+    <a href="{{ url_for('report_pdf', agent=agent) if agent else url_for('report_pdf') }}" target="_blank" class="btn btn-ghost">📄 {{ t('print_pdf') }}</a>
+  </div>
 </section>
 
 <section class="list">
-  <form method="get" action="{{ url_for('index') }}" class="searchbar">
+  <form method="get" action="{{ url_for('bl') }}" class="searchbar">
     <input type="text" name="q" value="{{ search }}" placeholder="{{ t('search_placeholder') }}">
     {% if agents %}
     <select name="agent" onchange="this.form.submit()">
@@ -29,34 +40,36 @@
     <button type="submit" class="btn">{{ t('search') }}</button>
   </form>
 
-  {% if bls %}
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>{{ t('bl_no') }}</th>
-          <th>{{ t('client') }}</th>
-          <th>{{ t('agent') }}</th>
-          <th>{{ t('shipping_line') }}</th>
-          <th>{{ t('status') }}</th>
-          <th>{{ t('category') }}</th>
-          <th>{{ t('bl_date') }}</th>
-          <th class="col-actions">{{ t('actions') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for bl in bls %}
-        <tr>
-          <td data-label="{{ t('bl_no') }}" class="mono">{{ bl.bl_no }}</td>
-          <td data-label="{{ t('client') }}">{{ bl.client }}</td>
-          <td data-label="{{ t('agent') }}">{{ bl.agent }}</td>
-          <td data-label="{{ t('shipping_line') }}">{{ bl.shipping_line }}</td>
-          <td data-label="{{ t('status') }}">{{ bl.status }}</td>
-          <td data-label="{{ t('category') }}">
+  {% if groups %}
+  <div class="accordion">
+    {% for grp in groups %}
+    <details class="agent-group" {% if agent or groups|length == 1 %}open{% endif %}>
+      <summary class="agent-summary">
+        <span class="chev" aria-hidden="true">▸</span>
+        <span class="agent-nm">{{ grp.agent }}</span>
+        <span class="agent-count">{{ grp['items']|length }}</span>
+      </summary>
+      <div class="agent-body">
+        {% for bl in grp['items'] %}
+        <div class="bl-card">
+          <div class="bl-top">
+            <div class="bl-id">
+              <strong class="bl-client">{{ bl.client }}</strong>
+              <span class="bl-no mono">{{ bl.bl_no }}</span>
+            </div>
             <span class="badge badge-{{ bl.category }}">{{ cat_label(bl.category) }}</span>
-          </td>
-          <td data-label="{{ t('bl_date') }}">{{ bl.bl_date }}</td>
-          <td data-label="{{ t('actions') }}" class="col-actions">
+          </div>
+          {% if bl.status %}<div class="bl-status">{{ bl.status }}</div>{% endif %}
+          <div class="bl-meta">
+            {% if bl.icd %}<span class="chip">🏭 {{ t('icd') }}: {{ bl.icd }}</span>{% endif %}
+            {% if bl.manifest_date %}<span class="chip">📅 {{ t('manifest_date') }}: {{ bl.manifest_date }}</span>{% endif %}
+            {% if bl.carry_in_date %}<span class="chip">📥 {{ t('carry_in_date') }}: {{ bl.carry_in_date }}</span>{% endif %}
+            {% if bl.release_date %}<span class="chip ok">✅ {{ t('release_date') }}: {{ bl.release_date }}</span>{% endif %}
+            {% if bl.gate_out_date %}<span class="chip ok">🚚 {{ t('gate_out_date') }}: {{ bl.gate_out_date }}</span>{% endif %}
+            {% if bl.shipping_line %}<span class="chip">🚢 {{ bl.shipping_line }}</span>{% endif %}
+          </div>
+          {% if bl.notes %}<div class="bl-notes">📝 {{ bl.notes }}</div>{% endif %}
+          <div class="bl-actions">
             {% if bl.id in doc_ids %}
             <a href="{{ url_for('document', bl_id=bl.id) }}" target="_blank" class="btn btn-sm" title="{{ t('view_doc') }}">📎</a>
             {% endif %}
@@ -65,14 +78,12 @@
                   onsubmit="return confirm('{{ t('confirm_delete') }}')">
               <button type="submit" class="btn btn-sm btn-danger">{{ t('delete') }}</button>
             </form>
-          </td>
-        </tr>
-        {% if bl.notes %}
-        <tr class="notes-row"><td colspan="8" data-label="{{ t('notes') }}">📝 {{ bl.notes }}</td></tr>
-        {% endif %}
+          </div>
+        </div>
         {% endfor %}
-      </tbody>
-    </table>
+      </div>
+    </details>
+    {% endfor %}
   </div>
   {% else %}
   <p class="empty">{{ t('no_records') }}</p>

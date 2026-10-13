@@ -47,6 +47,11 @@ bls = Table(
     Column("category", String(32), default="in_progress"),
     Column("bl_date", String(32), default=""),
     Column("notes", Text, default=""),
+    Column("icd", String(255), default=""),             # ICD / Port location
+    Column("manifest_date", String(64), default=""),
+    Column("carry_in_date", String(64), default=""),
+    Column("release_date", String(64), default=""),
+    Column("gate_out_date", String(64), default=""),
     Column("last_checked", String(64), default=""),
     Column("created_at", String(64)),
     Column("updated_at", String(64)),
@@ -71,8 +76,29 @@ def _norm_category(value):
     return value if value in CATEGORIES else "in_progress"
 
 
+EXTRA_COLS = {
+    "icd": "VARCHAR(255)",
+    "manifest_date": "VARCHAR(64)",
+    "carry_in_date": "VARCHAR(64)",
+    "release_date": "VARCHAR(64)",
+    "gate_out_date": "VARCHAR(64)",
+}
+
+
 def init_db():
     metadata.create_all(engine)
+    _migrate()
+
+
+def _migrate():
+    """Add any newer columns to an existing table (Neon/SQLite safe)."""
+    from sqlalchemy import inspect as sa_inspect, text
+    insp = sa_inspect(engine)
+    existing = {c["name"] for c in insp.get_columns("bls")}
+    with engine.begin() as conn:
+        for col, typ in EXTRA_COLS.items():
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE bls ADD COLUMN {col} {typ} DEFAULT ''"))
 
 
 def _row_to_dict(row):
@@ -91,7 +117,8 @@ def list_bls(search=None, agent=None):
         ))
     if agent:
         stmt = stmt.where(bls.c.agent == agent)
-    stmt = stmt.order_by(bls.c.updated_at.desc())
+    # Alphabetical: by company (agent) A-Z, then client, then BL number.
+    stmt = stmt.order_by(bls.c.agent.asc(), bls.c.client.asc(), bls.c.bl_no.asc())
     with engine.connect() as conn:
         return [dict(r._mapping) for r in conn.execute(stmt).fetchall()]
 
@@ -122,6 +149,11 @@ def _clean(data):
         "category": _norm_category(data.get("category")),
         "bl_date": (data.get("bl_date") or "").strip(),
         "notes": (data.get("notes") or "").strip(),
+        "icd": (data.get("icd") or "").strip(),
+        "manifest_date": (data.get("manifest_date") or "").strip(),
+        "carry_in_date": (data.get("carry_in_date") or "").strip(),
+        "release_date": (data.get("release_date") or "").strip(),
+        "gate_out_date": (data.get("gate_out_date") or "").strip(),
         "updated_at": now,
     }
 
@@ -145,6 +177,13 @@ def delete_bl(bl_id):
     with engine.begin() as conn:
         conn.execute(sa_delete(bl_documents).where(bl_documents.c.bl_id == bl_id))
         conn.execute(sa_delete(bls).where(bls.c.id == bl_id))
+
+
+def clear_all_bls():
+    """Delete every BL record and its documents (used by 'replace' import)."""
+    with engine.begin() as conn:
+        conn.execute(sa_delete(bl_documents))
+        conn.execute(sa_delete(bls))
 
 
 def summary_counts():

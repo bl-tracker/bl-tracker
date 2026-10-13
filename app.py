@@ -70,6 +70,45 @@ def send_telegram(text):
         return False, str(e)
 
 
+def send_telegram_document(data_bytes, filename, caption=""):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return False, "missing_config"
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
+    try:
+        resp = requests.post(
+            url,
+            data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption[:1000], "parse_mode": "HTML"},
+            files={"document": (filename, data_bytes, "application/pdf")},
+            timeout=40,
+        )
+        if resp.status_code == 200 and resp.json().get("ok"):
+            return True, "ok"
+        return False, f"{resp.status_code}: {resp.text[:200]}"
+    except requests.RequestException as e:
+        return False, str(e)
+
+
+def notify_telegram():
+    """Send the grouped text summary, then attach the PDF report."""
+    from report import build_report_pdf
+    ok, detail = send_telegram(build_summary_text())
+    try:
+        pdf = build_report_pdf(lang=NOTIFY_LANG)
+        fname = "BL_Report_" + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M") + ".pdf"
+        ok2, detail2 = send_telegram_document(pdf, fname, caption=_pdf_caption())
+    except Exception as e:  # PDF failure must not block the text summary
+        ok2, detail2 = False, f"pdf_error: {e}"
+    return (ok or ok2), f"text={detail}; pdf={detail2}"
+
+
+def _pdf_caption():
+    c = db.summary_counts()
+    lang = NOTIFY_LANG
+    return (f"\U0001F4C4 {t('tg_header', lang)} — {t('total', lang)}: {c['total']} | "
+            f"✅ {c['completed']} | \U0001F6A2 {c['in_progress']} | "
+            f"⚠️ {c['problem']} | ℹ️ {c['other']}")
+
+
 CAT_EMOJI = {"completed": "✅", "in_progress": "\U0001F6A2",
              "problem": "⚠️", "other": "ℹ️"}
 CAT_SORT = {"problem": 0, "in_progress": 1, "completed": 2, "other": 3}
@@ -115,23 +154,40 @@ def build_summary_text(lang=None):
     return text
 
 
-# ----- List / summary -----
+# ----- Welcome / landing -----
 @app.route("/")
-def index():
+def welcome():
+    return render_template("welcome.html")
+
+
+# ----- BL tracker list / summary -----
+@app.route("/bl")
+def bl():
+    lang = current_lang()
     search = request.args.get("q", "").strip()
     agent = request.args.get("agent", "").strip()
     records = db.list_bls(search or None, agent or None)
     counts = db.summary_counts()
     doc_ids = db.bls_with_documents()
     agents = db.agents_list()
-    return render_template("index.html", bls=records, counts=counts,
+
+    # Group by company (agent) for the collapsible accordion.
+    no_agent = t("no_agent", lang)
+    groups = []
+    for r in records:
+        key = (r.get("agent") or "").strip() or no_agent
+        if not groups or groups[-1]["agent"] != key:
+            groups.append({"agent": key, "items": []})
+        groups[-1]["items"].append(r)
+
+    return render_template("index.html", groups=groups, counts=counts,
                            search=search, doc_ids=doc_ids,
                            agents=agents, agent=agent)
 
 
 @app.route("/set-lang/<lang>")
 def set_lang(lang):
-    resp = make_response(redirect(request.referrer or url_for("index")))
+    resp = make_response(redirect(request.referrer or url_for("welcome")))
     resp.set_cookie("lang", "en" if lang == "en" else "sw", max_age=60 * 60 * 24 * 365)
     return resp
 
@@ -161,7 +217,7 @@ def add():
         bl_id = db.create_bl(request.form)
         _save_uploaded_doc(bl_id)
         flash(t("created_ok", lang), "ok")
-        return redirect(url_for("index"))
+        return redirect(url_for("bl"))
     return render_template("form.html", bl={}, mode="add", agents=db.agents_list())
 
 
@@ -170,7 +226,7 @@ def edit(bl_id):
     lang = current_lang()
     bl = db.get_bl(bl_id)
     if not bl:
-        return redirect(url_for("index"))
+        return redirect(url_for("bl"))
     if request.method == "POST":
         if not request.form.get("bl_no", "").strip():
             flash(t("required", lang), "error")
@@ -178,7 +234,7 @@ def edit(bl_id):
         db.update_bl(bl_id, request.form)
         _save_uploaded_doc(bl_id)
         flash(t("updated_ok", lang), "ok")
-        return redirect(url_for("index"))
+        return redirect(url_for("bl"))
     has_doc = db.get_document(bl_id) is not None
     return render_template("form.html", bl=bl, mode="edit", bl_id=bl_id, has_doc=has_doc, agents=db.agents_list())
 
@@ -188,7 +244,7 @@ def delete(bl_id):
     lang = current_lang()
     db.delete_bl(bl_id)
     flash(t("deleted_ok", lang), "ok")
-    return redirect(url_for("index"))
+    return redirect(url_for("bl"))
 
 
 # ----- View / download a BL document -----
@@ -196,7 +252,7 @@ def delete(bl_id):
 def document(bl_id):
     doc = db.get_document(bl_id)
     if not doc:
-        return redirect(url_for("index"))
+        return redirect(url_for("bl"))
     return send_file(
         io.BytesIO(doc["data"]),
         mimetype=doc["content_type"] or "application/octet-stream",
@@ -262,21 +318,28 @@ def import_bls():
             flash(t("import_nofile", lang), "error")
             return render_template("import.html")
         name = f.filename.lower()
+        data = f.read()
+        dservices = False
         try:
             if name.endswith(".csv"):
-                text = f.read().decode("utf-8-sig", errors="replace")
-                reader = list(csv.reader(io.StringIO(text)))
+                text_content = data.decode("utf-8-sig", errors="replace")
+                reader = list(csv.reader(io.StringIO(text_content)))
                 if not reader:
                     raise ValueError("empty")
                 rows = _parse_rows(reader[0], reader[1:])
             elif name.endswith(".xlsx"):
                 from openpyxl import load_workbook
-                wb = load_workbook(io.BytesIO(f.read()), read_only=True, data_only=True)
-                ws = wb.active
-                all_rows = [[c for c in r] for r in ws.iter_rows(values_only=True)]
-                if not all_rows:
-                    raise ValueError("empty")
-                rows = _parse_rows(all_rows[0], all_rows[1:])
+                import dservices_import
+                wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+                if dservices_import.is_dservices_workbook(wb.sheetnames):
+                    dservices = True
+                    rows = dservices_import.parse(data)
+                else:
+                    ws = wb.active
+                    all_rows = [[c for c in r] for r in ws.iter_rows(values_only=True)]
+                    if not all_rows:
+                        raise ValueError("empty")
+                    rows = _parse_rows(all_rows[0], all_rows[1:])
             else:
                 flash(t("import_badtype", lang), "error")
                 return render_template("import.html")
@@ -284,9 +347,11 @@ def import_bls():
             flash(t("import_error", lang), "error")
             return render_template("import.html")
 
+        if request.form.get("replace"):
+            db.clear_all_bls()
         n = db.bulk_create(rows)
-        flash(t("import_ok", lang).format(n=n), "ok")
-        return redirect(url_for("index"))
+        flash(t("import_ds_ok" if dservices else "import_ok", lang).format(n=n), "ok")
+        return redirect(url_for("bl"))
     return render_template("import.html")
 
 
@@ -308,9 +373,23 @@ def template_csv():
 @app.route("/send-summary", methods=["POST"])
 def send_summary():
     lang = current_lang()
-    ok, _ = send_telegram(build_summary_text())
+    ok, _ = notify_telegram()
     flash(t("summary_sent" if ok else "summary_fail", lang), "ok" if ok else "error")
-    return redirect(url_for("index"))
+    return redirect(url_for("bl"))
+
+
+# ----- PDF report (download / print) -----
+@app.route("/report.pdf")
+def report_pdf():
+    from report import build_report_pdf
+    agent = request.args.get("agent", "").strip() or None
+    lang = current_lang()
+    pdf = build_report_pdf(agent_filter=agent, lang=lang)
+    resp = make_response(pdf)
+    resp.headers["Content-Type"] = "application/pdf"
+    fname = "BL_Report_" + datetime.now(timezone.utc).strftime("%Y%m%d") + ".pdf"
+    resp.headers["Content-Disposition"] = f'inline; filename="{fname}"'
+    return resp
 
 
 # ----- Notify endpoint for external cron (every 3 hours) -----
@@ -318,7 +397,7 @@ def send_summary():
 def tasks_notify():
     if NOTIFY_TOKEN and request.args.get("token") != NOTIFY_TOKEN:
         return {"ok": False, "error": "unauthorized"}, 401
-    ok, detail = send_telegram(build_summary_text())
+    ok, detail = notify_telegram()
     return {"ok": ok, "detail": detail}
 
 
@@ -337,7 +416,7 @@ def health():
 def _start_scheduler():
     from apscheduler.schedulers.background import BackgroundScheduler
     scheduler = BackgroundScheduler(daemon=True, timezone="UTC")
-    scheduler.add_job(lambda: send_telegram(build_summary_text()), "interval", hours=3)
+    scheduler.add_job(notify_telegram, "interval", hours=3)
     scheduler.start()
 
 

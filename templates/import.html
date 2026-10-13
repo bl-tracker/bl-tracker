@@ -12,14 +12,22 @@
     <a href="{{ url_for('template_csv') }}" class="btn btn-sm">⬇ {{ t('download_template') }}</a>
   </div>
 
+  <div class="import-help" style="border-left:4px solid var(--accent)">
+    <p class="muted" style="margin:0">⭐ {{ t('import_ds_note') }}</p>
+  </div>
+
   <form method="post" enctype="multipart/form-data" action="{{ url_for('import_bls') }}" class="blform">
     <label class="full">
       {{ t('choose_file') }}
       <input type="file" name="file" accept=".xlsx,.csv" required>
     </label>
+    <label class="full" style="flex-direction:row; align-items:center; gap:.5rem">
+      <input type="checkbox" name="replace" value="1" style="width:auto">
+      <span>{{ t('replace_label') }} <small class="hint">— {{ t('replace_hint') }}</small></span>
+    </label>
     <div class="formactions">
       <button type="submit" class="btn btn-primary">{{ t('upload') }}</button>
-      <a href="{{ url_for('index') }}" class="btn btn-ghost">{{ t('cancel') }}</a>
+      <a href="{{ url_for('bl') }}" class="btn btn-ghost">{{ t('cancel') }}</a>
     </div>
   </form>
 </section>
