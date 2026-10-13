@@ -126,6 +126,7 @@ STRINGS = {
     "section_active": {"sw": "Zinazoendelea (hazijatoka ICD/Port)",
                        "en": "Ongoing (not yet gated out)"},
     "section_done": {"sw": "Zimekamilika (Gate Out)", "en": "Completed (Gated out)"},
+    "pdf_download": {"sw": "Pakua PDF", "en": "Download PDF"},
     "tg_sync_header": {"sw": "\U0001F504 Mabadiliko mapya kutoka TANeSW",
                        "en": "\U0001F504 New updates from TANeSW"},
     "tg_sync_none": {"sw": "Hakuna mabadiliko mapya kwa sasa.",

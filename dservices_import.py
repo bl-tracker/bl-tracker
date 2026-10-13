@@ -115,8 +115,11 @@ def parse(file_bytes):
             client = str(cell(r, "client")).strip()
             if not client or client.lower() == "select":
                 continue
-            bl = (str(cell(r, "bl_no")).strip() or str(cell(r, "ref")).strip()
-                  or str(cell(r, "ucr")).strip() or "-")
+            # The BL number (the "Number" column) is the key. A row with no BL
+            # number is not ready — skip it until the BL number is filled in.
+            bl = str(cell(r, "bl_no")).strip()
+            if not bl or bl.lower() in ("select", "-", "none", "n/a"):
+                continue
             status = str(cell(r, "status")).strip()
             if status.lower() == "select":
                 status = ""

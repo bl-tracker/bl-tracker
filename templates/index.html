@@ -113,12 +113,18 @@
   {% endif %}
 
   {% if active_groups %}
-  <h3 class="section-head section-active">🚢 {{ t('section_active') }}</h3>
+  <div class="section-head section-active">
+    <span>🚢 {{ t('section_active') }}</span>
+    <a href="{{ url_for('report_pdf', scope='active', agent=agent) if agent else url_for('report_pdf', scope='active') }}" target="_blank" class="btn btn-sm">📄 {{ t('pdf_download') }}</a>
+  </div>
   {{ accordion(active_groups, agent or active_groups|length == 1) }}
   {% endif %}
 
   {% if done_groups %}
-  <h3 class="section-head section-done">✅ {{ t('section_done') }}</h3>
+  <div class="section-head section-done">
+    <span>✅ {{ t('section_done') }}</span>
+    <a href="{{ url_for('report_pdf', scope='done', agent=agent) if agent else url_for('report_pdf', scope='done') }}" target="_blank" class="btn btn-sm">📄 {{ t('pdf_download') }}</a>
+  </div>
   {{ accordion(done_groups, False) }}
   {% endif %}
 </section>

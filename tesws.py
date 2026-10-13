@@ -18,6 +18,13 @@ import time
 import requests
 
 TESWS_URL = "https://tanesw.tra.go.tz/api/cgm/api/v1/cgme/trkng/srch"
+# Code -> name table for shipping agents (and more). The tracking response only
+# gives the agent CODE (shagCd, e.g. "BFL"); this table resolves it to the full
+# name ("BLUE FUNNEL TANZANIA LIMITED"). coTpCd == "SL" are shipping lines/agents.
+CO_DCLA_URL = "https://tanesw.tra.go.tz/api/ptl/api/v1/ptle/extptl/comnppup/co-dcla-cd"
+
+# in-memory cache of {agent_code: agent_name}; refreshed at most once a day
+_AGENT_CACHE = {"map": None, "ts": 0.0}
 
 HEADERS = {
     "Accept": "application/json, text/plain, */*",
@@ -75,18 +82,54 @@ def _strip_code(name):
     return s
 
 
-def map_fields(content):
+def shipping_agents(session=None, timeout=20, force=False):
+    """Return {code: name} for shipping agents (coTpCd 'SL'), cached for a day.
+    On any error returns whatever is cached (possibly empty)."""
+    now = time.time()
+    if (not force and _AGENT_CACHE["map"] is not None
+            and now - _AGENT_CACHE["ts"] < 86400):
+        return _AGENT_CACHE["map"]
+    getter = session or requests
+    params = {"coCd": "", "coNm": "", "coTin": "", "coTpCd": "SL",
+              "spcdlWrhsYn": "", "coCds": "", "size": "999999"}
+    try:
+        resp = getter.get(CO_DCLA_URL, params=params, headers=HEADERS, timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json()
+        lst = data.get("coDclaCdList")
+        if isinstance(lst, dict):
+            lst = lst.get("content") or []
+        elif not isinstance(lst, list):
+            lst = []
+        m = {}
+        for x in lst:
+            if x.get("coTpCd") == "SL" and x.get("coCd"):
+                m[str(x["coCd"]).strip().upper()] = (x.get("coNm") or "").strip()
+        if m:
+            _AGENT_CACHE["map"] = m
+            _AGENT_CACHE["ts"] = now
+        return m or (_AGENT_CACHE["map"] or {})
+    except Exception:
+        return _AGENT_CACHE["map"] or {}
+
+
+def map_fields(content, agent_map=None):
     """Geuza trkngDtl.content kuwa sehemu za database tunazosasisha."""
+    if agent_map is None:
+        agent_map = _AGENT_CACHE.get("map") or {}
     plist = content.get("blPrcssLst") or []
     status = content.get("cagTrkngPrcssCdNm") or ""
     icd = (content.get("dlvrPlcCdNm")
            or _strip_code(content.get("lastGodsLoctCdNm"))
            or "")
+    # s/line = Shipping Agent (shagCd -> name); fall back to carrier, then code.
+    shag = str(content.get("shagCd") or "").strip().upper()
+    shipping_line = agent_map.get(shag, "") or content.get("carrNm") or shag or ""
     return {
         "status": status,
         "category": _infer_category(status),
         "vessel": content.get("vsslNm") or "",
-        "shipping_line": content.get("carrNm") or "",
+        "shipping_line": shipping_line,
         "icd": icd,
         "manifest_date": _milestone(plist, MANIFEST_CODES),
         "carry_in_date": _milestone(plist, CARRY_IN_CODES),
@@ -95,7 +138,7 @@ def map_fields(content):
     }
 
 
-def fetch_bl(bl_no, session=None, timeout=12):
+def fetch_bl(bl_no, session=None, timeout=12, agent_map=None):
     """
     Rudisha dict ya sehemu zilizo-map kwa BL moja, au None ikiwa TANeSW
     haina rekodi (content:0) au kuna hitilafu.
@@ -104,6 +147,8 @@ def fetch_bl(bl_no, session=None, timeout=12):
     if not bl or bl == "-":
         return None
     getter = session or requests
+    if agent_map is None:
+        agent_map = shipping_agents(session)
     params = {"srchCrn": "", "srchBlNo": bl, "srchCntrNo": ""}
     try:
         resp = getter.get(TESWS_URL, params=params, headers=HEADERS, timeout=timeout)
@@ -116,7 +161,7 @@ def fetch_bl(bl_no, session=None, timeout=12):
     content = (data.get("trkngDtl") or {}).get("content")
     if not content:
         return None
-    return map_fields(content)
+    return map_fields(content, agent_map)
 
 
 def sync_rows(rows, delay=0.2, only_open=True):
@@ -128,12 +173,13 @@ def sync_rows(rows, delay=0.2, only_open=True):
     """
     out = []
     sess = requests.Session()
+    amap = shipping_agents(sess)  # load the agent code->name table once
     TRACK = ("status", "category", "vessel", "shipping_line", "icd",
              "manifest_date", "carry_in_date", "release_date", "gate_out_date")
     for r in rows:
         if only_open and (r.get("category") == "completed" or r.get("gate_out_date")):
             continue
-        fields = fetch_bl(r.get("bl_no"), session=sess)
+        fields = fetch_bl(r.get("bl_no"), session=sess, agent_map=amap)
         if not fields:
             continue
         changes = {}

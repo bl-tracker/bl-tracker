@@ -141,8 +141,9 @@ def notify_telegram():
     from report import build_report_pdf
     ok, detail = send_telegram(build_summary_text())
     try:
-        pdf = build_report_pdf(lang=NOTIFY_LANG)
-        fname = "BL_Report_" + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M") + ".pdf"
+        # Telegram PDF = ongoing (not yet gated out) only.
+        pdf = build_report_pdf(lang=NOTIFY_LANG, scope="active")
+        fname = "BL_Ongoing_" + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M") + ".pdf"
         ok2, detail2 = send_telegram_document(pdf, fname, caption=_pdf_caption())
     except Exception as e:  # PDF failure must not block the text summary
         ok2, detail2 = False, f"pdf_error: {e}"
@@ -401,6 +402,9 @@ def _parse_rows(headers, data_rows):
         for field, i in idx.items():
             val = raw[i] if i < len(raw) else ""
             rec[field] = "" if val is None else str(val).strip()
+        # BL number is required — skip rows that don't have one yet.
+        if not (rec.get("bl_no") or "").strip() or rec["bl_no"].lower() in ("-", "n/a", "none"):
+            continue
         if rec.get("category"):
             rec["category"] = _norm_cat(rec["category"])
         rows.append(rec)
@@ -485,11 +489,15 @@ def send_summary():
 def report_pdf():
     from report import build_report_pdf
     agent = request.args.get("agent", "").strip() or None
+    scope = request.args.get("scope", "").strip() or None
+    if scope not in ("active", "done"):
+        scope = None
     lang = current_lang()
-    pdf = build_report_pdf(agent_filter=agent, lang=lang)
+    pdf = build_report_pdf(agent_filter=agent, lang=lang, scope=scope)
     resp = make_response(pdf)
     resp.headers["Content-Type"] = "application/pdf"
-    fname = "BL_Report_" + datetime.now(timezone.utc).strftime("%Y%m%d") + ".pdf"
+    tag = {"active": "Ongoing", "done": "Completed"}.get(scope, "All")
+    fname = f"BL_{tag}_" + datetime.now(timezone.utc).strftime("%Y%m%d") + ".pdf"
     resp.headers["Content-Disposition"] = f'inline; filename="{fname}"'
     return resp
 
