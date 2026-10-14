@@ -857,6 +857,8 @@ def tesws_raw():
     bl = request.args.get("bl", "").strip()
     if not bl:
         return {"ok": False, "error": "pass ?bl=<BL number>"}, 400
+    if request.args.get("debug") == "1":
+        return {"ok": True, **tesws.diagnose(bl)}
     fields = tesws.fetch_bl(bl)
     return {"ok": True, "bl_no": bl, "found": fields is not None, "fields": fields}
 

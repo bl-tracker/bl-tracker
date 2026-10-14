@@ -199,17 +199,71 @@ def _bl_variants(bl):
     return out
 
 
-def _fetch_raw(bl, getter, timeout):
+def _probe(bl, getter, timeout):
+    """Return (state, content): state is 'ok' (has data), 'empty' (clean
+    content:0 — not in active tracking), or 'error' (couldn't reach TANeSW)."""
     params = {"srchCrn": "", "srchBlNo": bl, "srchCntrNo": ""}
     try:
         resp = getter.get(TESWS_URL, params=params, headers=HEADERS, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
     except Exception:
-        return None
+        return "error", None
     if (data.get("totalCnt") or {}).get("content", 0) < 1:
-        return None
-    return (data.get("trkngDtl") or {}).get("content") or None
+        return "empty", None
+    content = (data.get("trkngDtl") or {}).get("content")
+    return ("ok", content) if content else ("empty", None)
+
+
+def _fetch_raw(bl, getter, timeout):
+    state, content = _probe(bl, getter, timeout)
+    return content if state == "ok" else None
+
+
+# A BL whose status shows it already progressed past manifest — if TANeSW no
+# longer has it (archived), it has gated out and is complete.
+PROGRESS_KEYS = ("carry in", "carry out", "release", "tansad", "gate out",
+                 "get out", "discharge", "handover", "css", "delivery",
+                 "overstay")
+
+
+def fetch_with_state(bl_no, getter, timeout, agent_map):
+    """Return (fields_or_None, state). state: 'found' / 'empty' / 'error'."""
+    any_empty = False
+    for v in _bl_variants(bl_no):
+        state, content = _probe(v, getter, timeout)
+        if state == "ok" and content:
+            return map_fields(content, agent_map), "found"
+        if state == "empty":
+            any_empty = True
+    return None, ("empty" if any_empty else "error")
+
+
+def diagnose(bl_no, session=None, timeout=12):
+    """Diagnostic view: which variant matched, current status, delivery place,
+    and every gate-out event with its location — to debug completion."""
+    getter = session or requests
+    tried = {}
+    content = None
+    matched = None
+    for variant in _bl_variants(bl_no):
+        c = _fetch_raw(variant, getter, timeout)
+        tried[variant] = bool(c)
+        if c and content is None:
+            content, matched = c, variant
+    out = {"input": bl_no, "tried": tried, "matched": matched, "found": bool(content)}
+    if content:
+        out["current_status"] = content.get("cagTrkngPrcssCdNm")
+        out["dlvrPlcCd"] = content.get("dlvrPlcCd")
+        out["dlvrPlcCdNm"] = content.get("dlvrPlcCdNm")
+        out["gate_events"] = [
+            {"code": s.get("cagTrkngPrcssCd"), "name": s.get("cagTrkngPrcssCdNm"),
+             "date": s.get("prcssDt"), "wrhsCd": s.get("wrhsCd"),
+             "wrhsCdNm": s.get("wrhsCdNm")}
+            for s in (content.get("blPrcssLst") or [])
+            if s.get("cagTrkngPrcssCd") in GATE_OUT_CODES]
+        out["mapped"] = map_fields(content, {})
+    return out
 
 
 def fetch_bl(bl_no, session=None, timeout=12, agent_map=None):
@@ -223,14 +277,8 @@ def fetch_bl(bl_no, session=None, timeout=12, agent_map=None):
     getter = session or requests
     if agent_map is None:
         agent_map = shipping_agents(session)
-    content = None
-    for variant in _bl_variants(bl):
-        content = _fetch_raw(variant, getter, timeout)
-        if content:
-            break
-    if not content:
-        return None
-    return map_fields(content, agent_map)
+    fields, _ = fetch_with_state(bl, getter, timeout, agent_map)
+    return fields
 
 
 def sync_rows(rows, delay=0.2, only_open=True):
@@ -246,13 +294,33 @@ def sync_rows(rows, delay=0.2, only_open=True):
     TRACK = ("status", "category", "vessel", "shipping_line", "icd",
              "manifest_date", "carry_in_date", "release_date", "gate_out_date",
              "tansad_no", "containers", "container_count")
+    fill_only = ("tansad_no", "containers", "container_count")
+    found_count = 0
+    archived = []  # deferred: only trust these if TANeSW is actually responding
     for r in rows:
         if only_open and r.get("category") == "completed":
             continue
-        fields = fetch_bl(r.get("bl_no"), session=sess, agent_map=amap)
+        fields, state = fetch_with_state(r.get("bl_no"), sess, 12, amap)
+
         if not fields:
+            # TANeSW has no active record. If the BL already progressed past
+            # manifest, it has gated out and been archived -> mark completed.
+            if state == "empty":
+                st = (r.get("status") or "").lower()
+                if r.get("category") != "completed" and any(k in st for k in PROGRESS_KEYS):
+                    archived.append({
+                        "id": r.get("id"), "bl_no": r.get("bl_no"),
+                        "client": r.get("client"), "agent": r.get("agent"),
+                        "changes": {"category": (r.get("category") or "", "completed")},
+                        "new_manifest": False, "archived_done": True,
+                        "fields": {"category": "completed"},
+                    })
+            if delay:
+                time.sleep(delay)
             continue
-        fill_only = ("tansad_no", "containers", "container_count")
+
+        found_count += 1
+
         changes = {}
         for k in TRACK:
             new = str(fields.get(k, "") or "")
@@ -277,6 +345,11 @@ def sync_rows(rows, delay=0.2, only_open=True):
             })
         if delay:
             time.sleep(delay)
+
+    # Only trust the "archived = gated out" calls if TANeSW actually returned
+    # data this run (guards against a TANeSW outage completing everything).
+    if found_count > 0:
+        out.extend(archived)
     return out
 
 
