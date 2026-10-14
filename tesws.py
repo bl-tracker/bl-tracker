@@ -45,15 +45,16 @@ RELEASE_CODES  = ("T04",)         # TANSAD Declaration Release
 GATE_OUT_CODES = ("C62", "C60")   # Gate Out Confirm End / Start (ya mwisho = kutoka ICD)
 
 
-def _is_gate_out(status):
-    """A BL is complete ONLY when its current status is Gate Out."""
+def _is_complete(status):
+    """A BL is complete when gated out, OR when it is a released overstayed
+    cargo (that cargo has already left the ICD/Port)."""
     s = (status or "").lower()
-    return "gate out" in s or "get out" in s
+    return "gate out" in s or "get out" in s or "released overstayed" in s
 
 
 def _infer_category(status):
     s = (status or "").lower()
-    if _is_gate_out(status):
+    if _is_complete(status):
         return "completed"
     if any(k in s for k in ("suspect", "target", "overstay", "query", "hold",
                             "problem", "rejected", "blocked", "cancel")):
@@ -133,7 +134,7 @@ def map_fields(content, agent_map=None):
     # Complete ONLY when the CURRENT status is Gate Out. An earlier gate-out at
     # the port (on the way to the ICD) is NOT completion, so we only record the
     # gate-out date when the BL has truly finished.
-    done = _is_gate_out(status)
+    done = _is_complete(status)
     return {
         "status": status,
         "category": _infer_category(status),
