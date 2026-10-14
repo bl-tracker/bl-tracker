@@ -42,22 +42,36 @@ HEADERS = {
 MANIFEST_CODES = ("A02", "A01")   # Import Manifest Approved / Submitted
 CARRY_IN_CODES = ("C04", "C01")   # Carry In End / Start
 RELEASE_CODES  = ("T04",)         # TANSAD Declaration Release
-GATE_OUT_CODES = ("C62", "C60")   # Gate Out Confirm End / Start (ya mwisho = kutoka ICD)
+GATE_OUT_CODES = ("C62", "C60")   # Gate Out Confirm End / Start
+TANSAD_CODES   = ("T03", "T04")   # TANSAD Declaration Receipt / Release
 
 
-def _is_complete(status):
-    """A BL is complete when gated out, OR when it is a released overstayed
-    cargo (that cargo has already left the ICD/Port)."""
-    s = (status or "").lower()
-    return "gate out" in s or "get out" in s or "released overstayed" in s
+def _is_released_overstay(status):
+    return "released overstayed" in (status or "").lower()
 
 
-def _infer_category(status):
-    s = (status or "").lower()
-    if _is_complete(status):
+def _final_gate_out(plist, dlvr_code):
+    """Return the date of the gate-out that happened AT the delivery place (the
+    ICD), i.e. the real completion — not the earlier gate-out at the port while
+    the cargo was only moving to the ICD. Returns '' if none."""
+    best = ""
+    for s in plist or []:
+        if (s.get("cagTrkngPrcssCd") in GATE_OUT_CODES
+                and dlvr_code and s.get("wrhsCd") == dlvr_code):
+            dt = str(s.get("prcssDt") or "")
+            if dt > best:
+                best = dt
+    return _d(best)
+
+
+def _infer_category(status, done):
+    if done:
         return "completed"
-    if any(k in s for k in ("suspect", "target", "overstay", "query", "hold",
+    s = (status or "").lower()
+    if any(k in s for k in ("suspect", "target", "query", "hold",
                             "problem", "rejected", "blocked", "cancel")):
+        return "problem"
+    if "overstay" in s and "released overstay" not in s:
         return "problem"
     return "in_progress"
 
@@ -131,20 +145,44 @@ def map_fields(content, agent_map=None):
     # s/line = Shipping Agent (shagCd -> name); fall back to carrier, then code.
     shag = str(content.get("shagCd") or "").strip().upper()
     shipping_line = agent_map.get(shag, "") or content.get("carrNm") or shag or ""
-    # Complete ONLY when the CURRENT status is Gate Out. An earlier gate-out at
-    # the port (on the way to the ICD) is NOT completion, so we only record the
-    # gate-out date when the BL has truly finished.
-    done = _is_complete(status)
+
+    # Completion = a gate-out that happened AT the delivery place (the ICD). The
+    # earlier gate-out at the port (while only moving to the ICD) does NOT count.
+    # Once that ICD gate-out exists the BL stays complete, even if TANeSW later
+    # shows another step (amended TANSAD etc.). "Released Overstayed" also counts.
+    dlvr_code = content.get("dlvrPlcCd")
+    gate_out = _final_gate_out(plist, dlvr_code)
+    done = bool(gate_out) or _is_released_overstay(status)
+
+    # TANSAD / declaration number (shown once duty has been declared)
+    tansad = ""
+    for s in plist:
+        if s.get("cagTrkngPrcssCd") in TANSAD_CODES:
+            t = (s.get("dclrNo") or "").strip()
+            if not t:
+                t = (s.get("sctDclrNo") or "").split("(")[0].strip()
+            if t:
+                tansad = t
+                break
+
+    # containers: numbers + how many
+    cntrs = [str(c.get("cntrNo")).strip() for c in (content.get("blCntrLst") or [])
+             if c.get("cntrNo")]
+    count = content.get("blCntrNo") or len(cntrs)
+
     return {
         "status": status,
-        "category": _infer_category(status),
+        "category": _infer_category(status, done),
         "vessel": content.get("vsslNm") or "",
         "shipping_line": shipping_line,
         "icd": icd,
         "manifest_date": _milestone(plist, MANIFEST_CODES),
         "carry_in_date": _milestone(plist, CARRY_IN_CODES),
         "release_date": _milestone(plist, RELEASE_CODES),
-        "gate_out_date": _milestone(plist, GATE_OUT_CODES) if done else "",
+        "gate_out_date": gate_out,
+        "tansad_no": tansad,
+        "containers": ", ".join(cntrs),
+        "container_count": str(count) if count else "",
     }
 
 
@@ -185,19 +223,24 @@ def sync_rows(rows, delay=0.2, only_open=True):
     sess = requests.Session()
     amap = shipping_agents(sess)  # load the agent code->name table once
     TRACK = ("status", "category", "vessel", "shipping_line", "icd",
-             "manifest_date", "carry_in_date", "release_date", "gate_out_date")
+             "manifest_date", "carry_in_date", "release_date", "gate_out_date",
+             "tansad_no", "containers", "container_count")
     for r in rows:
         if only_open and r.get("category") == "completed":
             continue
         fields = fetch_bl(r.get("bl_no"), session=sess, agent_map=amap)
         if not fields:
             continue
+        fill_only = ("tansad_no", "containers", "container_count")
         changes = {}
         for k in TRACK:
             new = str(fields.get(k, "") or "")
             old = str(r.get(k) or "")
-            if new != old:  # record real changes AND clears (TANeSW is authoritative)
-                changes[k] = (old, new)
+            if new == old:
+                continue
+            if k in fill_only and not new:  # never report/clear a fill-only field
+                continue
+            changes[k] = (old, new)
         if changes:
             out.append({
                 "id": r.get("id"),

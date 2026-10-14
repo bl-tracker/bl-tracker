@@ -40,6 +40,10 @@ MATCHERS = {
     "carry_in_date": lambda s: "carry in" in s,
     "release_date":  lambda s: "release" in s,
     "gate_out_date": lambda s: "get out" in s,
+    "tansad":        lambda s: "tansad" in s,
+    "duty":          lambda s: "tax paid" in s,
+    "cnt40":         lambda s: s == "40ft",
+    "cnt20":         lambda s: s == "20ft",
 }
 
 
@@ -57,6 +61,13 @@ def _infer_category(status):
                             "problem", "rejected", "blocked")):
         return "problem"
     return "in_progress"
+
+
+def _num(v):
+    try:
+        return int(float(str(v).strip()))
+    except Exception:
+        return 0
 
 
 def _as_date(v):
@@ -127,6 +138,11 @@ def parse(file_bytes):
             items = str(cell(r, "items")).strip()
             icd = str(cell(r, "icd")).strip().replace("Select", "")
             vessel = str(cell(r, "vessel")).strip()
+            tansad = str(cell(r, "tansad")).strip().replace("Select", "")
+            duty = str(cell(r, "duty")).strip()
+            n40 = _num(cell(r, "cnt40"))
+            n20 = _num(cell(r, "cnt20"))
+            cnt = n40 + n20
             out.append({
                 "bl_no": bl,
                 "client": client,
@@ -139,9 +155,15 @@ def parse(file_bytes):
                 "bl_date": _as_date(cell(r, "received")),
                 "notes": " | ".join(x for x in (ktype, items) if x),
                 "icd": icd,
-                "manifest_date": _as_date(cell(r, "manifest_date")),
+                # the Excel "manifest date" is really the ETA (expected). The
+                # real manifest_date is filled only once TANeSW reads it.
+                "eta": _as_date(cell(r, "manifest_date")),
+                "manifest_date": "",
                 "carry_in_date": _as_date(cell(r, "carry_in_date")),
                 "release_date": _as_date(cell(r, "release_date")),
                 "gate_out_date": _as_date(cell(r, "gate_out_date")),
+                "tansad_no": tansad,
+                "duty_paid": duty,
+                "container_count": str(cnt) if cnt else "",
             })
     return out

@@ -61,8 +61,14 @@
     </label>
 
     <label>
+      {{ t('eta') }}
+      <input type="date" name="eta" value="{{ bl.eta or '' }}">
+    </label>
+
+    <label>
       {{ t('manifest_date') }}
       <input type="date" name="manifest_date" value="{{ bl.manifest_date or '' }}">
+      <small class="hint">{{ t('manifest_from_tanesw') }}</small>
     </label>
 
     <label>
@@ -78,6 +84,26 @@
     <label>
       {{ t('gate_out_date') }}
       <input type="date" name="gate_out_date" value="{{ bl.gate_out_date or '' }}">
+    </label>
+
+    <label>
+      {{ t('tansad_no') }}
+      <input type="text" name="tansad_no" value="{{ bl.tansad_no or '' }}">
+    </label>
+
+    <label>
+      {{ t('duty_paid') }}
+      <input type="text" name="duty_paid" value="{{ bl.duty_paid or '' }}">
+    </label>
+
+    <label>
+      {{ t('container_count') }}
+      <input type="text" name="container_count" value="{{ bl.container_count or '' }}">
+    </label>
+
+    <label class="full">
+      {{ t('containers') }}
+      <input type="text" name="containers" value="{{ bl.containers or '' }}" class="mono" placeholder="MSCU1234567, TGHU7654321">
     </label>
 
     <label class="full">

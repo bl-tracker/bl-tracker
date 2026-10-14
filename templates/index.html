@@ -19,19 +19,24 @@
   </div>
 
   <div class="bl-meta">
-    {% set ref = bl.manifest_date or bl.carry_in_date or bl.bl_date %}
+    {% set ref = bl.manifest_date or bl.carry_in_date %}
     {% set d = days_since(ref) %}
     {% if d is not none and d >= 0 and bl.category != 'completed' %}
       {% set over = d >= overstay_days %}
       <span class="chip {{ 'over' if over }}">{% if over %}⚠️ {{ t('overstay') }} · {% endif %}⏳ {{ d }} {{ t('days') }} {{ t('at_port') }}</span>
     {% endif %}
     {% if bl.icd %}<span class="chip">🏭 {{ t('icd') }}: {{ bl.icd }}</span>{% endif %}
-    {% if bl.manifest_date %}<span class="chip">📅 {{ t('manifest_date') }}: {{ bl.manifest_date }}</span>{% endif %}
+    {% if bl.manifest_date %}<span class="chip">📅 {{ t('manifest_date') }}: {{ bl.manifest_date }}</span>
+    {% elif bl.eta %}<span class="chip eta">🕗 {{ t('eta') }}: {{ bl.eta }}</span>{% endif %}
     {% if bl.carry_in_date %}<span class="chip">📥 {{ t('carry_in_date') }}: {{ bl.carry_in_date }}</span>{% endif %}
     {% if bl.release_date %}<span class="chip ok">✅ {{ t('release_date') }}: {{ bl.release_date }}</span>{% endif %}
     {% if bl.gate_out_date %}<span class="chip ok">🚚 {{ t('gate_out_date') }}: {{ bl.gate_out_date }}</span>{% endif %}
     {% if bl.vessel %}<span class="chip">🛳️ {{ bl.vessel }}</span>{% endif %}
     {% if bl.shipping_line %}<span class="chip">🚢 {{ bl.shipping_line }}</span>{% endif %}
+    {% if bl.tansad_no %}<span class="chip">🧾 {{ t('tansad_no') }}: {{ bl.tansad_no }}</span>{% endif %}
+    {% if bl.duty_paid %}<span class="chip">💰 {{ t('duty_paid') }}: {{ bl.duty_paid }}</span>{% endif %}
+    {% if bl.container_count %}<span class="chip">📦 {{ bl.container_count }}</span>{% endif %}
+    {% if bl.containers %}<span class="chip mono">🔢 {{ bl.containers }}</span>{% endif %}
   </div>
   {% if bl.notes %}<div class="bl-notes">📝 {{ bl.notes }}</div>{% endif %}
   <div class="bl-actions">

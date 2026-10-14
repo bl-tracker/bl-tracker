@@ -57,7 +57,7 @@ class _PDF(FPDF):
         self.set_y(-10)
         self.set_font("Helvetica", "", 7)
         self.set_text_color(130, 130, 130)
-        self.cell(0, 6, f"D-SERVICES OPERATION  -  {self.page_no()}", align="C")
+        self.cell(0, 6, f"D-SERVICES GROUP  -  {self.page_no()}", align="C")
 
 
 SCOPE_TITLE = {

@@ -489,7 +489,7 @@ def document(bl_id):
 
 
 # ----- Import Excel / CSV -----
-IMPORT_FIELDS = ["bl_no", "client", "agent", "vessel", "shipping_line", "status", "category", "bl_date", "notes"]
+IMPORT_FIELDS = ["bl_no", "client", "agent", "vessel", "shipping_line", "status", "category", "bl_date", "notes", "tansad_no", "duty_paid"]
 HEADER_ALIASES = {
     "bl": "bl_no", "bl no": "bl_no", "bl_no": "bl_no", "bl number": "bl_no", "namba ya bl": "bl_no",
     "client": "client", "mteja": "client", "customer": "client",
@@ -500,6 +500,8 @@ HEADER_ALIASES = {
     "category": "category", "kundi": "category",
     "bl_date": "bl_date", "date": "bl_date", "tarehe": "bl_date",
     "notes": "notes", "maelezo": "notes",
+    "tansad_no": "tansad_no", "tansad": "tansad_no", "tansad no": "tansad_no", "tansad no.": "tansad_no",
+    "duty_paid": "duty_paid", "duty": "duty_paid", "tax paid": "duty_paid", "ushuru": "duty_paid",
 }
 CATEGORY_ALIASES = {
     "completed": "completed", "imekamilika": "completed", "zimekamilika": "completed", "done": "completed",
@@ -639,6 +641,7 @@ _FIELD_LABELS = {
     "status": "Status", "vessel": "Vessel", "shipping_line": "S/Line",
     "icd": "ICD", "manifest_date": "Manifest", "carry_in_date": "Carry-in",
     "release_date": "Release", "gate_out_date": "Gate-out",
+    "tansad_no": "TANSAD", "containers": "Containers", "container_count": "Cntrs",
 }
 
 
@@ -749,8 +752,8 @@ def build_weekly_text(lang=None, window=7):
     manif = [b for b in records if within(b.get("manifest_date"))]
     ongoing = [b for b in records if not is_done(b)]
     overdue = [b for b in ongoing
-               if (_days_since(b.get("manifest_date") or b.get("carry_in_date")
-                               or b.get("bl_date")) or -1) >= OVERSTAY_DAYS]
+               if (_days_since(b.get("manifest_date") or b.get("carry_in_date"))
+                   or -1) >= OVERSTAY_DAYS]
 
     no_agent = t("no_agent", lang)
 

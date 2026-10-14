@@ -53,6 +53,11 @@ bls = Table(
     Column("carry_in_date", String(64), default=""),
     Column("release_date", String(64), default=""),
     Column("gate_out_date", String(64), default=""),
+    Column("tansad_no", String(128), default=""),        # TANSAD / declaration no
+    Column("duty_paid", String(64), default=""),         # duty amount (manual)
+    Column("containers", Text, default=""),              # container numbers (comma)
+    Column("container_count", String(16), default=""),   # how many containers
+    Column("eta", String(64), default=""),               # expected arrival (Excel)
     Column("last_checked", String(64), default=""),
     Column("created_at", String(64)),
     Column("updated_at", String(64)),
@@ -95,6 +100,11 @@ EXTRA_COLS = {
     "carry_in_date": "VARCHAR(64)",
     "release_date": "VARCHAR(64)",
     "gate_out_date": "VARCHAR(64)",
+    "tansad_no": "VARCHAR(128)",
+    "duty_paid": "VARCHAR(64)",
+    "containers": "TEXT",
+    "container_count": "VARCHAR(16)",
+    "eta": "VARCHAR(64)",
 }
 
 
@@ -176,6 +186,11 @@ def _clean(data):
         "carry_in_date": (data.get("carry_in_date") or "").strip(),
         "release_date": (data.get("release_date") or "").strip(),
         "gate_out_date": (data.get("gate_out_date") or "").strip(),
+        "tansad_no": (data.get("tansad_no") or "").strip(),
+        "duty_paid": (data.get("duty_paid") or "").strip(),
+        "containers": (data.get("containers") or "").strip(),
+        "container_count": str(data.get("container_count") or "").strip(),
+        "eta": (data.get("eta") or "").strip(),
         "updated_at": now,
     }
 
@@ -195,8 +210,14 @@ def update_bl(bl_id, data):
         conn.execute(sa_update(bls).where(bls.c.id == bl_id).values(**values))
 
 
-TESWS_FIELDS = ("status", "category", "vessel", "shipping_line", "icd",
-                "manifest_date", "carry_in_date", "release_date", "gate_out_date")
+# TANeSW is authoritative for these — they are set even when empty (so a stale
+# value, e.g. a port gate-out date, gets cleared).
+TESWS_CLEAR_FIELDS = ("status", "category", "vessel", "shipping_line", "icd",
+                      "manifest_date", "carry_in_date", "release_date", "gate_out_date")
+# These TANeSW only FILLS when it has a value — it never wipes an Excel/manual
+# value (duty_paid is manual-only and not here at all).
+TESWS_FILL_FIELDS = ("tansad_no", "containers", "container_count")
+TESWS_FIELDS = TESWS_CLEAR_FIELDS + TESWS_FILL_FIELDS
 
 
 def apply_tesws_update(bl_id, fields):
@@ -204,10 +225,14 @@ def apply_tesws_update(bl_id, fields):
     client/agent/notes/bl_date). Empty values ARE written, so a stale date
     (e.g. a port gate-out) gets cleared when TANeSW no longer reports it."""
     values = {"last_checked": _now(), "updated_at": _now()}
-    for k in TESWS_FIELDS:
+    for k in TESWS_CLEAR_FIELDS:
         if k in fields:
             values[k] = (_norm_category(fields[k]) if k == "category"
                          else str(fields[k] or "").strip())
+    for k in TESWS_FILL_FIELDS:
+        v = str(fields.get(k) or "").strip()
+        if v:  # only fill — never wipe an Excel/manual value
+            values[k] = v
     with engine.begin() as conn:
         conn.execute(sa_update(bls).where(bls.c.id == bl_id).values(**values))
 

@@ -2,7 +2,7 @@
 
 STRINGS = {
     "app_title": {"sw": "Mfumo wa Kufuatilia BL", "en": "BL Tracker"},
-    "brand": {"sw": "D-SERVICES OPERATION", "en": "D-SERVICES OPERATION"},
+    "brand": {"sw": "D-SERVICES GROUP", "en": "D-SERVICES GROUP"},
     "slogan": {"sw": "Fast. Accurate. Trusted.", "en": "Fast. Accurate. Trusted."},
     "tagline": {"sw": "Clearing & Forwarding, Dar es Salaam", "en": "Clearing & Forwarding, Dar es Salaam"},
     "nav_home": {"sw": "Mwanzo", "en": "Home"},
@@ -127,6 +127,13 @@ STRINGS = {
                        "en": "Ongoing (not yet gated out)"},
     "section_done": {"sw": "Zimekamilika (Gate Out)", "en": "Completed (Gated out)"},
     "pdf_download": {"sw": "Pakua PDF", "en": "Download PDF"},
+    "tansad_no": {"sw": "Namba ya TANSAD", "en": "TANSAD No."},
+    "duty_paid": {"sw": "Ushuru uliolipwa", "en": "Duty paid"},
+    "containers": {"sw": "Kontena (namba)", "en": "Containers"},
+    "container_count": {"sw": "Idadi ya kontena", "en": "Container count"},
+    "eta": {"sw": "ETA (matarajio)", "en": "ETA (expected)"},
+    "manifest_from_tanesw": {"sw": "Hujazwa na TANeSW ikisoma manifest.",
+                             "en": "Filled by TANeSW once the manifest is read."},
     # Weekly report
     "wk_header": {"sw": "\U0001F4C5 Ripoti ya Wiki — BL", "en": "\U0001F4C5 Weekly BL Report"},
     "wk_gated": {"sw": "Zimetoka (Gate Out) wiki hii", "en": "Gated out this week"},
@@ -192,7 +199,7 @@ STRINGS = {
     "upload": {"sw": "Pakia", "en": "Upload"},
     "import_ok": {"sw": "Rekodi {n} zimeongezwa.", "en": "{n} records imported."},
     "import_ds_ok": {"sw": "Faili ya D-SERVICES imetambuliwa — rekodi {n} zimeingizwa.", "en": "D-SERVICES file recognised — {n} records imported."},
-    "import_ds_note": {"sw": "Ukipakia faili yako ya “D-SERVICES OPERATION Daily”, mfumo utaitambua wenyewe na kuchukua taarifa za msingi (kampuni, mteja, BL, status, ICD na tarehe) kutoka sheets za CNT na VEHICLE.", "en": "If you upload your “D-SERVICES OPERATION Daily” file, the system recognises it and pulls the essentials (company, client, BL, status, ICD and dates) from the CNT and VEHICLE sheets."},
+    "import_ds_note": {"sw": "Ukipakia faili yako ya “Daily” (yenye sheets za CNT na VEHICLE kwa kila kampuni), mfumo utaitambua wenyewe na kuchukua taarifa za msingi (kampuni, mteja, BL, status, ICD na tarehe).", "en": "If you upload your “Daily” workbook (with per-company CNT and VEHICLE sheets), the system recognises it and pulls the essentials (company, client, BL, status, ICD and dates)."},
     "replace_label": {"sw": "Futa zote kwanza (badilisha na hizi mpya)", "en": "Clear all first (replace with these)"},
     "replace_hint": {"sw": "Tumia hii kila siku ukipakia faili mpya ili kuepuka marudio.", "en": "Use this for a daily refresh to avoid duplicates."},
     "import_nofile": {"sw": "Tafadhali chagua faili kwanza.", "en": "Please choose a file first."},

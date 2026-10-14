@@ -152,6 +152,9 @@ tbody tr:last-child { border-bottom: none; }
 .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 2rem; align-items: center;
   background: linear-gradient(135deg, #0b2545, #10365f); color: #fff;
   border-radius: 18px; padding: 2.2rem; margin: .5rem 0 2rem; }
+.hero-logo { display: block; max-width: 340px; width: 100%; height: auto;
+  margin-bottom: 1.1rem; background: #fff; padding: 14px 18px; border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(11,37,69,.15); }
 .hero-kicker { text-transform: uppercase; letter-spacing: .18em; font-size: .75rem;
   color: var(--accent); font-weight: 700; margin: 0 0 .5rem; }
 .hero-title { font-size: 2rem; line-height: 1.15; margin: 0 0 .8rem; font-weight: 800; }
@@ -251,6 +254,7 @@ details[open] > .agent-summary .chev { transform: rotate(90deg); }
 .chip { background: #f1f5f9; color: #475569; font-size: .76rem; padding: .2rem .55rem;
   border-radius: 999px; white-space: nowrap; }
 .chip.ok { background: #dcfce7; color: #166534; }
+.chip.eta { background: #fef3c7; color: #92400e; }   /* ETA — amber, not green */
 .bl-notes { color: var(--muted); font-size: .82rem; margin-top: .4rem; }
 .bl-actions { display: flex; gap: .4rem; margin-top: .6rem; justify-content: flex-end; }
 
