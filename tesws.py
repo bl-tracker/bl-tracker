@@ -14,6 +14,7 @@ Tunachochukua kwa kila BL:
   tarehe: manifest / carry-in / release / gate-out (kutoka blPrcssLst),
   pamoja na category iliyokisiwa kutoka status.
 """
+import re
 import time
 import requests
 
@@ -186,6 +187,31 @@ def map_fields(content, agent_map=None):
     }
 
 
+def _bl_variants(bl):
+    """BL search variants. A consolidated/groupage master BL is often split in
+    the sheet as 'PLLD20845634-001', '-002'... but TANeSW only knows the master
+    'PLLD20845634', so we also try with a trailing '-NNN' / '/NNN' removed."""
+    bl = (bl or "").strip()
+    out = [bl]
+    base = re.sub(r"[-/ ]\d{1,4}$", "", bl)
+    if base and base != bl:
+        out.append(base)
+    return out
+
+
+def _fetch_raw(bl, getter, timeout):
+    params = {"srchCrn": "", "srchBlNo": bl, "srchCntrNo": ""}
+    try:
+        resp = getter.get(TESWS_URL, params=params, headers=HEADERS, timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return None
+    if (data.get("totalCnt") or {}).get("content", 0) < 1:
+        return None
+    return (data.get("trkngDtl") or {}).get("content") or None
+
+
 def fetch_bl(bl_no, session=None, timeout=12, agent_map=None):
     """
     Rudisha dict ya sehemu zilizo-map kwa BL moja, au None ikiwa TANeSW
@@ -197,16 +223,11 @@ def fetch_bl(bl_no, session=None, timeout=12, agent_map=None):
     getter = session or requests
     if agent_map is None:
         agent_map = shipping_agents(session)
-    params = {"srchCrn": "", "srchBlNo": bl, "srchCntrNo": ""}
-    try:
-        resp = getter.get(TESWS_URL, params=params, headers=HEADERS, timeout=timeout)
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception:
-        return None
-    if (data.get("totalCnt") or {}).get("content", 0) < 1:
-        return None
-    content = (data.get("trkngDtl") or {}).get("content")
+    content = None
+    for variant in _bl_variants(bl):
+        content = _fetch_raw(variant, getter, timeout)
+        if content:
+            break
     if not content:
         return None
     return map_fields(content, agent_map)

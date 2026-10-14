@@ -143,6 +143,9 @@ def parse(file_bytes):
             n40 = _num(cell(r, "cnt40"))
             n20 = _num(cell(r, "cnt20"))
             cnt = n40 + n20
+            gate_out = _as_date(cell(r, "gate_out_date"))
+            # if the sheet already records a gate-out date, it has left (complete)
+            category = "completed" if gate_out else _infer_category(status)
             out.append({
                 "bl_no": bl,
                 "client": client,
@@ -151,7 +154,7 @@ def parse(file_bytes):
                 # auto-detected from vessel name / BL prefix; blank if unknown
                 "shipping_line": detect_shipping_line(vessel, bl),
                 "status": status,
-                "category": _infer_category(status),
+                "category": category,
                 "bl_date": _as_date(cell(r, "received")),
                 "notes": " | ".join(x for x in (ktype, items) if x),
                 "icd": icd,
@@ -161,7 +164,7 @@ def parse(file_bytes):
                 "manifest_date": "",
                 "carry_in_date": _as_date(cell(r, "carry_in_date")),
                 "release_date": _as_date(cell(r, "release_date")),
-                "gate_out_date": _as_date(cell(r, "gate_out_date")),
+                "gate_out_date": gate_out,
                 "tansad_no": tansad,
                 "duty_paid": duty,
                 "container_count": str(cnt) if cnt else "",
