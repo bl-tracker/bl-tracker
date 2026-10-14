@@ -23,9 +23,10 @@
       {% if logged_in %}
       <a href="{{ url_for('bl') }}">{{ t('nav_tracker') }}</a>
       <a href="{{ url_for('dashboard') }}">{{ t('nav_dashboard') }}</a>
+      {% if is_admin %}<a href="{{ url_for('users_page') }}">{{ t('nav_users') }}</a>{% endif %}
       {% endif %}
       {% if auth_on and logged_in %}
-      <a href="{{ url_for('logout') }}">{{ t('nav_logout') }}</a>
+      <a href="{{ url_for('logout') }}">{{ t('nav_logout') }}{% if username %} ({{ username }}){% endif %}</a>
       {% elif auth_on %}
       <a href="{{ url_for('login') }}">{{ t('nav_login') }}</a>
       {% endif %}

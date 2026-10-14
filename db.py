@@ -68,6 +68,17 @@ bl_documents = Table(
     Column("uploaded_at", String(64)),
 )
 
+users = Table(
+    "users", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("username", String(80), nullable=False, unique=True),
+    Column("pw_hash", String(255), nullable=False),
+    Column("role", String(16), default="viewer"),   # 'admin' or 'viewer'
+    # comma-separated company (agent) names this user may see; "" = all
+    Column("agents", Text, default=""),
+    Column("created_at", String(64)),
+)
+
 
 def _now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -101,6 +112,14 @@ def _migrate():
         for col, typ in EXTRA_COLS.items():
             if col not in existing:
                 conn.execute(text(f"ALTER TABLE bls ADD COLUMN {col} {typ} DEFAULT ''"))
+    # users table may predate the 'agents' column
+    try:
+        ucols = {c["name"] for c in insp.get_columns("users")}
+        if "agents" not in ucols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN agents TEXT DEFAULT ''"))
+    except Exception:
+        pass
 
 
 def _row_to_dict(row):
@@ -286,3 +305,51 @@ def bls_with_documents():
     with engine.connect() as conn:
         rows = conn.execute(select(bl_documents.c.bl_id)).fetchall()
     return {r[0] for r in rows}
+
+
+# ----- Users -----
+def count_users():
+    with engine.connect() as conn:
+        return conn.execute(select(func.count()).select_from(users)).scalar() or 0
+
+
+def list_users():
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(users).order_by(users.c.role.asc(), users.c.username.asc())
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def get_user(username):
+    with engine.connect() as conn:
+        row = conn.execute(
+            select(users).where(func.lower(users.c.username) == (username or "").strip().lower())
+        ).fetchone()
+    return _row_to_dict(row)
+
+
+def create_user(username, pw_hash, role="viewer", agents=""):
+    with engine.begin() as conn:
+        conn.execute(insert(users).values(
+            username=(username or "").strip(), pw_hash=pw_hash,
+            role="admin" if role == "admin" else "viewer",
+            agents=agents or "", created_at=_now(),
+        ))
+
+
+def set_password(user_id, pw_hash):
+    with engine.begin() as conn:
+        conn.execute(sa_update(users).where(users.c.id == user_id).values(pw_hash=pw_hash))
+
+
+def set_user_agents(user_id, agents):
+    """agents: comma-separated company names, or '' for all."""
+    with engine.begin() as conn:
+        conn.execute(sa_update(users).where(users.c.id == user_id)
+                     .values(agents=agents or ""))
+
+
+def delete_user(user_id):
+    with engine.begin() as conn:
+        conn.execute(sa_delete(users).where(users.c.id == user_id))

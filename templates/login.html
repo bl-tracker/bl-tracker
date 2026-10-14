@@ -6,8 +6,12 @@
   <p class="muted">{{ t('login_note') }}</p>
   <form method="post" action="{{ url_for('login', next=request.args.get('next','')) }}" class="blform">
     <label class="full">
+      {{ t('username') }}
+      <input type="text" name="username" autofocus required autocomplete="username">
+    </label>
+    <label class="full">
       {{ t('password') }}
-      <input type="password" name="password" autofocus required>
+      <input type="password" name="password" required autocomplete="current-password">
     </label>
     <div class="formactions">
       <button type="submit" class="btn btn-primary">{{ t('login_btn') }}</button>

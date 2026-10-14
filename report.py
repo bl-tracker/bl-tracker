@@ -69,8 +69,10 @@ SCOPE_TITLE = {
 ROW_H = 7.2  # row height / line spacing (mm) — balanced, no overlap
 
 
-def build_report_pdf(agent_filter=None, lang="sw", scope=None):
+def build_report_pdf(agent_filter=None, lang="sw", scope=None, allowed=None):
     records = db.list_bls(None, agent_filter)
+    if allowed is not None:  # restrict to a user's permitted companies
+        records = [b for b in records if (b.get("agent") or "").strip() in allowed]
     if scope == "active":
         records = [b for b in records if not _is_done(b)]
     elif scope == "done":

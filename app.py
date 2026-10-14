@@ -40,16 +40,82 @@ ALLOWED_DOC_EXT = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
 
 from i18n import t  # noqa: E402
 
+from werkzeug.security import generate_password_hash, check_password_hash  # noqa: E402
+
 db.init_db()
+
+
+def _seed_admin():
+    """First run: if there are no users yet but APP_PASSWORD is set, create an
+    'admin' account with that password so the owner can log in and add others."""
+    try:
+        if db.count_users() == 0 and APP_PASSWORD:
+            db.create_user("admin", generate_password_hash(APP_PASSWORD), "admin")
+    except Exception:
+        pass
+
+
+_seed_admin()
+
+
+def auth_enabled():
+    if APP_PASSWORD:
+        return True
+    try:
+        return db.count_users() > 0
+    except Exception:
+        return False
 
 
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if APP_PASSWORD and not session.get("auth"):
+        if auth_enabled() and not session.get("uid"):
             return redirect(url_for("login", next=request.path))
         return f(*args, **kwargs)
     return wrapper
+
+
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not auth_enabled():
+            return f(*args, **kwargs)  # open mode (no users/password set)
+        if not session.get("uid"):
+            return redirect(url_for("login", next=request.path))
+        if session.get("role") != "admin":
+            flash(t("not_allowed", current_lang()), "error")
+            return redirect(url_for("bl"))
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def allowed_agents():
+    """Set of company (agent) names the current user may see, or None = all.
+    Admins (and open mode) see everything; a viewer with no companies assigned
+    also sees everything (no restriction set)."""
+    if (not auth_enabled()) or session.get("role") == "admin":
+        return None
+    raw = (session.get("agents") or "").strip()
+    if not raw:
+        return None
+    return {a.strip() for a in raw.split(",") if a.strip()}
+
+
+def filter_allowed(records):
+    allow = allowed_agents()
+    if allow is None:
+        return records
+    return [r for r in records if (r.get("agent") or "").strip() in allow]
+
+
+def _counts_from(records):
+    c = {"total": len(records), "completed": 0, "in_progress": 0,
+         "problem": 0, "other": 0}
+    for b in records:
+        cat = b.get("category") if b.get("category") in c else "other"
+        c[cat if cat in ("completed", "in_progress", "problem") else "other"] += 1
+    return c
 
 
 def _days_since(s):
@@ -74,8 +140,10 @@ def inject_helpers():
         "cat_label": lambda c: t(c if c in db.CATEGORIES else "other", lang),
         "days_since": _days_since,
         "overstay_days": OVERSTAY_DAYS,
-        "auth_on": bool(APP_PASSWORD),
-        "logged_in": (not APP_PASSWORD) or bool(session.get("auth")),
+        "auth_on": auth_enabled(),
+        "logged_in": (not auth_enabled()) or bool(session.get("uid")),
+        "is_admin": (not auth_enabled()) or session.get("role") == "admin",
+        "username": session.get("uname", ""),
     }
 
 
@@ -83,11 +151,17 @@ def inject_helpers():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     lang = current_lang()
-    if not APP_PASSWORD:
+    if not auth_enabled():
         return redirect(url_for("bl"))
     if request.method == "POST":
-        if request.form.get("password") == APP_PASSWORD:
-            session["auth"] = True
+        uname = request.form.get("username", "").strip()
+        pw = request.form.get("password", "")
+        u = db.get_user(uname)
+        if u and check_password_hash(u["pw_hash"], pw):
+            session["uid"] = u["id"]
+            session["uname"] = u["username"]
+            session["role"] = u["role"]
+            session["agents"] = u.get("agents") or ""
             session.permanent = True
             return redirect(request.args.get("next") or url_for("bl"))
         flash(t("login_wrong", lang), "error")
@@ -96,8 +170,50 @@ def login():
 
 @app.route("/logout")
 def logout():
-    session.pop("auth", None)
+    session.clear()
     return redirect(url_for("welcome"))
+
+
+# ----- User management (admin only) -----
+@app.route("/users", methods=["GET", "POST"])
+@admin_required
+def users_page():
+    lang = current_lang()
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "add":
+            uname = request.form.get("username", "").strip()
+            pw = request.form.get("password", "")
+            role = request.form.get("role", "viewer")
+            agents = ",".join(a.strip() for a in request.form.getlist("agents") if a.strip())
+            if not uname or not pw:
+                flash(t("user_need_fields", lang), "error")
+            elif db.get_user(uname):
+                flash(t("user_exists", lang), "error")
+            else:
+                db.create_user(uname, generate_password_hash(pw), role, agents)
+                flash(t("user_added", lang), "ok")
+        elif action == "agents":
+            uid = int(request.form.get("uid", "0") or 0)
+            agents = ",".join(a.strip() for a in request.form.getlist("agents") if a.strip())
+            db.set_user_agents(uid, agents)
+            flash(t("user_companies_saved", lang), "ok")
+        elif action == "delete":
+            uid = int(request.form.get("uid", "0") or 0)
+            if uid == session.get("uid"):
+                flash(t("user_self_del", lang), "error")  # don't delete yourself
+            else:
+                db.delete_user(uid)
+                flash(t("user_deleted", lang), "ok")
+        elif action == "passwd":
+            uid = int(request.form.get("uid", "0") or 0)
+            pw = request.form.get("password", "")
+            if pw:
+                db.set_password(uid, generate_password_hash(pw))
+                flash(t("user_pw_changed", lang), "ok")
+        return redirect(url_for("users_page"))
+    return render_template("users.html", users=db.list_users(),
+                           all_agents=db.agents_list())
 
 
 # ----- Telegram -----
@@ -225,9 +341,19 @@ def welcome():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    counts = db.summary_counts()
-    by_agent = db.counts_by_agent()
-    by_icd = db.counts_by_icd(limit=10)
+    allow = allowed_agents()
+    if allow is None:
+        counts = db.summary_counts()
+        by_agent = db.counts_by_agent()
+        by_icd = db.counts_by_icd(limit=10)
+    else:
+        recs = filter_allowed(db.list_bls())
+        counts = _counts_from(recs)
+        from collections import Counter
+        ac = Counter((r.get("agent") or "").strip() or "-" for r in recs)
+        ic = Counter((r.get("icd") or "").strip() for r in recs if (r.get("icd") or "").strip())
+        by_agent = sorted(ac.items(), key=lambda x: (-x[1], x[0]))
+        by_icd = sorted(ic.items(), key=lambda x: (-x[1], x[0]))[:10]
     cat_counts = [(c, counts[c]) for c in db.CATEGORIES]
     return render_template("dashboard.html", counts=counts,
                            by_agent=by_agent, by_icd=by_icd, cat_counts=cat_counts)
@@ -240,10 +366,14 @@ def bl():
     lang = current_lang()
     search = request.args.get("q", "").strip()
     agent = request.args.get("agent", "").strip()
-    records = db.list_bls(search or None, agent or None)
-    counts = db.summary_counts()
+    allow = allowed_agents()
+    # a restricted user may only filter within their own companies
+    if allow is not None and agent and agent not in allow:
+        agent = ""
+    records = filter_allowed(db.list_bls(search or None, agent or None))
+    counts = _counts_from(records)
     doc_ids = db.bls_with_documents()
-    agents = db.agents_list()
+    agents = db.agents_list() if allow is None else sorted(allow)
 
     # Group by company (agent) for the collapsible accordion. Active BLs
     # (not yet gated out) and completed ones are shown in separate sections.
@@ -301,7 +431,7 @@ def _form_with_carrier():
 
 
 @app.route("/add", methods=["GET", "POST"])
-@login_required
+@admin_required
 def add():
     lang = current_lang()
     if request.method == "POST":
@@ -316,7 +446,7 @@ def add():
 
 
 @app.route("/edit/<int:bl_id>", methods=["GET", "POST"])
-@login_required
+@admin_required
 def edit(bl_id):
     lang = current_lang()
     bl = db.get_bl(bl_id)
@@ -335,7 +465,7 @@ def edit(bl_id):
 
 
 @app.route("/delete/<int:bl_id>", methods=["POST"])
-@login_required
+@admin_required
 def delete(bl_id):
     lang = current_lang()
     db.delete_bl(bl_id)
@@ -411,7 +541,7 @@ def _parse_rows(headers, data_rows):
 
 
 @app.route("/import", methods=["GET", "POST"])
-@login_required
+@admin_required
 def import_bls():
     lang = current_lang()
     if request.method == "POST":
@@ -474,7 +604,7 @@ def template_csv():
 
 # ----- Send summary now (UI button) -----
 @app.route("/send-summary", methods=["POST"])
-@login_required
+@admin_required
 def send_summary():
     lang = current_lang()
     ok, _ = notify_telegram()
@@ -491,8 +621,11 @@ def report_pdf():
     scope = request.args.get("scope", "").strip() or None
     if scope not in ("active", "done"):
         scope = None
+    allow = allowed_agents()
+    if allow is not None and agent and agent not in allow:
+        agent = None
     lang = current_lang()
-    pdf = build_report_pdf(agent_filter=agent, lang=lang, scope=scope)
+    pdf = build_report_pdf(agent_filter=agent, lang=lang, scope=scope, allowed=allow)
     resp = make_response(pdf)
     resp.headers["Content-Type"] = "application/pdf"
     tag = {"active": "Ongoing", "done": "Completed"}.get(scope, "All")
@@ -600,6 +733,83 @@ def build_changes_text(changes, lang=None):
     return text
 
 
+# ----- Weekly report -----
+def build_weekly_text(lang=None, window=7):
+    """A once-a-week recap: gated out this week, newly manifested this week,
+    what's still ongoing, and overstays — grouped by company."""
+    lang = lang or NOTIFY_LANG
+    records = db.list_bls()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    def within(dstr):
+        d = _days_since(dstr)
+        return d is not None and 0 <= d < window
+
+    gated = [b for b in records if within(b.get("gate_out_date"))]
+    manif = [b for b in records if within(b.get("manifest_date"))]
+    ongoing = [b for b in records if not is_done(b)]
+    overdue = [b for b in ongoing
+               if (_days_since(b.get("manifest_date") or b.get("carry_in_date")
+                               or b.get("bl_date")) or -1) >= OVERSTAY_DAYS]
+
+    no_agent = t("no_agent", lang)
+
+    def by_company(items):
+        g = {}
+        for b in items:
+            g.setdefault((b.get("agent") or "").strip() or no_agent, []).append(b)
+        return g
+
+    lines = [f"<b>{t('wk_header', lang)}</b>", "",
+             f"{t('wk_gated', lang)}: <b>{len(gated)}</b>  ·  "
+             f"\U0001F195 {t('wk_manifested', lang)}: <b>{len(manif)}</b>",
+             f"\U0001F6A2 {t('wk_ongoing', lang)}: <b>{len(ongoing)}</b>  ·  "
+             f"⚠️ {t('overstay', lang)}: <b>{len(overdue)}</b>", ""]
+
+    def section(title, items, emoji):
+        if not items:
+            return
+        lines.append(f"{emoji} <b>{title}</b>")
+        for agent in sorted(by_company(items), key=lambda k: (k == no_agent, k.lower())):
+            grp = by_company(items)[agent]
+            lines.append(f"\U0001F3E2 {html.escape(agent)} ({len(grp)})")
+            for b in grp[:20]:
+                lines.append(f"   {html.escape(b.get('client') or '-')} — "
+                             f"{html.escape(b.get('bl_no') or '')}")
+        lines.append("")
+
+    section(t("wk_gated", lang), gated, "✅")
+    section(t("wk_manifested", lang), manif, "\U0001F195")
+    if overdue:
+        section(t("overstay", lang), overdue, "⚠️")
+
+    lines.append(f"{t('tg_time', lang)}: {now}")
+    text = "\n".join(lines)
+    if len(text) > 3800:
+        text = text[:3800].rsplit("\n", 1)[0] + "\n…"
+    return text
+
+
+def weekly_report():
+    ok, detail = send_telegram(build_weekly_text())
+    try:
+        from report import build_report_pdf
+        pdf = build_report_pdf(lang=NOTIFY_LANG, scope="active")
+        fname = "BL_Weekly_" + datetime.now(timezone.utc).strftime("%Y%m%d") + ".pdf"
+        ok2, detail2 = send_telegram_document(pdf, fname, caption=t("wk_header", NOTIFY_LANG))
+    except Exception as e:
+        ok2, detail2 = False, f"pdf_error: {e}"
+    return (ok or ok2), f"text={detail}; pdf={detail2}"
+
+
+@app.route("/tasks/weekly")
+def tasks_weekly():
+    if NOTIFY_TOKEN and request.args.get("token") != NOTIFY_TOKEN:
+        return {"ok": False, "error": "unauthorized"}, 401
+    ok, detail = weekly_report()
+    return {"ok": ok, "detail": detail}
+
+
 # ----- Notify endpoint for external cron (every 3 hours) -----
 @app.route("/tasks/notify")
 def tasks_notify():
@@ -628,7 +838,7 @@ def tasks_sync():
 
 # ----- Manual sync button (from the BL page) -----
 @app.route("/sync", methods=["POST"])
-@login_required
+@admin_required
 def sync_now():
     lang = current_lang()
     started = start_sync(only_open=request.form.get("all") != "1", do_notify=True)

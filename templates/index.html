@@ -38,11 +38,13 @@
     {% if bl.id in doc_ids %}
     <a href="{{ url_for('document', bl_id=bl.id) }}" target="_blank" class="btn btn-sm" title="{{ t('view_doc') }}">📎</a>
     {% endif %}
+    {% if is_admin %}
     <a href="{{ url_for('edit', bl_id=bl.id) }}" class="btn btn-sm">{{ t('edit') }}</a>
     <form method="post" action="{{ url_for('delete', bl_id=bl.id) }}" style="display:inline"
           onsubmit="return confirm('{{ t('confirm_delete') }}')">
       <button type="submit" class="btn btn-sm btn-danger">{{ t('delete') }}</button>
     </form>
+    {% endif %}
   </div>
 </div>
 {% endmacro %}
@@ -69,8 +71,10 @@
 <div class="page-head">
   <h1 class="page-title">{{ t('nav_tracker') }}</h1>
   <div class="page-actions">
+    {% if is_admin %}
     <a href="{{ url_for('add') }}" class="btn btn-primary btn-sm">+ {{ t('nav_add') }}</a>
     <a href="{{ url_for('import_bls') }}" class="btn btn-sm">⬆ {{ t('nav_import') }}</a>
+    {% endif %}
   </div>
 </div>
 
@@ -84,12 +88,14 @@
     <div class="card card-other"><span class="num">{{ counts.other }}</span><span class="lbl">{{ t('other') }}</span></div>
   </div>
   <div class="summary-send">
+    {% if is_admin %}
     <form method="post" action="{{ url_for('sync_now') }}" style="display:inline">
       <button type="submit" class="btn btn-primary">{{ t('sync_now') }}</button>
     </form>
     <form method="post" action="{{ url_for('send_summary') }}" style="display:inline">
       <button type="submit" class="btn btn-ghost">✈️ {{ t('send_summary_now') }}</button>
     </form>
+    {% endif %}
     <a href="{{ url_for('report_pdf', agent=agent) if agent else url_for('report_pdf') }}" target="_blank" class="btn btn-ghost">📄 {{ t('print_pdf') }}</a>
   </div>
 </section>
