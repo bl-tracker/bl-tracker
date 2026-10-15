@@ -31,6 +31,18 @@ COLS = [
     ("category", "category", 22),
 ]
 
+# Ongoing (the PDF sent to Telegram): item, TANSAD and tax matter most.
+COLS_ACTIVE = [
+    ("client", "client", 44),
+    ("bl_no", "bl_no", 30),
+    ("item", "item", 50),
+    ("status", "status", 36),
+    ("icd", "icd", 22),
+    ("carry_in_date", "carry_in_date", 22),
+    ("tansad_no", "tansad_no", 40),
+    ("duty_paid", "duty_paid", 28),
+]
+
 
 def _s(text):
     return (str(text) if text is not None else "").encode("latin-1", "replace").decode("latin-1")
@@ -77,6 +89,7 @@ def build_report_pdf(agent_filter=None, lang="sw", scope=None, allowed=None):
         records = [b for b in records if not _is_done(b)]
     elif scope == "done":
         records = [b for b in records if _is_done(b)]
+    cols = COLS_ACTIVE if scope == "active" else COLS
     counts = db.summary_counts()
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
@@ -118,7 +131,7 @@ def build_report_pdf(agent_filter=None, lang="sw", scope=None, allowed=None):
         pdf.set_font("Helvetica", "B", 8)
         pdf.set_text_color(90, 100, 110)
         pdf.set_fill_color(248, 250, 252)
-        for key, lbl, w in COLS:
+        for key, lbl, w in cols:
             pdf.cell(w, ROW_H, pdf.fit(t(lbl, lang), w), border="B", fill=True)
         pdf.ln(ROW_H)
 
@@ -133,7 +146,7 @@ def build_report_pdf(agent_filter=None, lang="sw", scope=None, allowed=None):
         for b in items:
             cat = b["category"] if b["category"] in CAT_COLORS else "other"
             text_rgb, bg_rgb = CAT_COLORS[cat]
-            for key, lbl, w in COLS:
+            for key, lbl, w in cols:
                 if key == "category":
                     pdf.set_font("Helvetica", "B", 8)
                     pdf.set_text_color(*text_rgb)

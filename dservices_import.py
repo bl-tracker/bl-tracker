@@ -156,6 +156,7 @@ def parse(file_bytes):
                 "status": status,
                 "category": category,
                 "bl_date": _as_date(cell(r, "received")),
+                "item": items,
                 "notes": " | ".join(x for x in (ktype, items) if x),
                 "icd": icd,
                 # the Excel "manifest date" is really the ETA (expected). The

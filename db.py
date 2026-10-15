@@ -57,6 +57,7 @@ bls = Table(
     Column("duty_paid", String(64), default=""),         # duty amount (manual)
     Column("containers", Text, default=""),              # container numbers (comma)
     Column("container_count", String(16), default=""),   # how many containers
+    Column("item", Text, default=""),                    # goods / item description
     Column("eta", String(64), default=""),               # expected arrival (Excel)
     Column("last_checked", String(64), default=""),
     Column("created_at", String(64)),
@@ -104,6 +105,7 @@ EXTRA_COLS = {
     "duty_paid": "VARCHAR(64)",
     "containers": "TEXT",
     "container_count": "VARCHAR(16)",
+    "item": "TEXT",
     "eta": "VARCHAR(64)",
 }
 
@@ -190,6 +192,7 @@ def _clean(data):
         "duty_paid": (data.get("duty_paid") or "").strip(),
         "containers": (data.get("containers") or "").strip(),
         "container_count": str(data.get("container_count") or "").strip(),
+        "item": (data.get("item") or "").strip(),
         "eta": (data.get("eta") or "").strip(),
         "updated_at": now,
     }
@@ -216,7 +219,7 @@ TESWS_CLEAR_FIELDS = ("status", "category", "vessel", "shipping_line", "icd",
                       "manifest_date", "carry_in_date", "release_date", "gate_out_date")
 # These TANeSW only FILLS when it has a value — it never wipes an Excel/manual
 # value (duty_paid is manual-only and not here at all).
-TESWS_FILL_FIELDS = ("tansad_no", "containers", "container_count")
+TESWS_FILL_FIELDS = ("tansad_no", "containers", "container_count", "item")
 TESWS_FIELDS = TESWS_CLEAR_FIELDS + TESWS_FILL_FIELDS
 
 

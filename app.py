@@ -489,7 +489,7 @@ def document(bl_id):
 
 
 # ----- Import Excel / CSV -----
-IMPORT_FIELDS = ["bl_no", "client", "agent", "vessel", "shipping_line", "status", "category", "bl_date", "notes", "tansad_no", "duty_paid"]
+IMPORT_FIELDS = ["bl_no", "client", "agent", "vessel", "shipping_line", "status", "category", "bl_date", "notes", "tansad_no", "duty_paid", "item"]
 HEADER_ALIASES = {
     "bl": "bl_no", "bl no": "bl_no", "bl_no": "bl_no", "bl number": "bl_no", "namba ya bl": "bl_no",
     "client": "client", "mteja": "client", "customer": "client",
@@ -502,6 +502,7 @@ HEADER_ALIASES = {
     "notes": "notes", "maelezo": "notes",
     "tansad_no": "tansad_no", "tansad": "tansad_no", "tansad no": "tansad_no", "tansad no.": "tansad_no",
     "duty_paid": "duty_paid", "duty": "duty_paid", "tax paid": "duty_paid", "ushuru": "duty_paid",
+    "item": "item", "items": "item", "bidhaa": "item", "goods": "item",
 }
 CATEGORY_ALIASES = {
     "completed": "completed", "imekamilika": "completed", "zimekamilika": "completed", "done": "completed",

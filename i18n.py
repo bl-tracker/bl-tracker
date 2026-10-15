@@ -132,6 +132,8 @@ STRINGS = {
     "containers": {"sw": "Kontena (namba)", "en": "Containers"},
     "container_count": {"sw": "Idadi ya kontena", "en": "Container count"},
     "eta": {"sw": "ETA (matarajio)", "en": "ETA (expected)"},
+    "item": {"sw": "Item (bidhaa)", "en": "Item"},
+    "assessed": {"sw": "Assessed", "en": "Assessed"},
     "manifest_from_tanesw": {"sw": "Hujazwa na TANeSW ikisoma manifest.",
                              "en": "Filled by TANeSW once the manifest is read."},
     # Weekly report

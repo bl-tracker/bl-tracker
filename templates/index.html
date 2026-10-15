@@ -9,7 +9,10 @@
     </div>
     <span class="badge badge-{{ bl.category }}">{{ cat_label(bl.category) }}</span>
   </div>
-  {% if bl.status %}<div class="bl-status">{{ bl.status }}</div>{% endif %}
+  {% if bl.status %}<div class="bl-status">{{ bl.status }}
+    {% if bl.tansad_no and bl.category != 'completed' %}<span class="assessed-tag">✓ {{ t('assessed') }}</span>{% endif %}
+  </div>
+  {% elif bl.tansad_no and bl.category != 'completed' %}<div class="bl-status"><span class="assessed-tag">✓ {{ t('assessed') }}</span></div>{% endif %}
 
   <div class="stepper">
     <span class="step {{ 'done' if bl.manifest_date }}">{{ t('manifest_date') }}</span>
@@ -33,9 +36,10 @@
     {% if bl.gate_out_date %}<span class="chip ok">🚚 {{ t('gate_out_date') }}: {{ bl.gate_out_date }}</span>{% endif %}
     {% if bl.vessel %}<span class="chip">🛳️ {{ bl.vessel }}</span>{% endif %}
     {% if bl.shipping_line %}<span class="chip">🚢 {{ bl.shipping_line }}</span>{% endif %}
+    {% if bl.item %}<span class="chip">📦 {{ t('item') }}: {{ bl.item }}</span>{% endif %}
     {% if bl.tansad_no %}<span class="chip">🧾 {{ t('tansad_no') }}: {{ bl.tansad_no }}</span>{% endif %}
     {% if bl.duty_paid %}<span class="chip">💰 {{ t('duty_paid') }}: {{ bl.duty_paid }}</span>{% endif %}
-    {% if bl.container_count %}<span class="chip">📦 {{ bl.container_count }}</span>{% endif %}
+    {% if bl.container_count %}<span class="chip">🧮 {{ bl.container_count }} cntr</span>{% endif %}
     {% if bl.containers %}<span class="chip mono">🔢 {{ bl.containers }}</span>{% endif %}
   </div>
   {% if bl.notes %}<div class="bl-notes">📝 {{ bl.notes }}</div>{% endif %}

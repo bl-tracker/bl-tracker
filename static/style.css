@@ -255,6 +255,9 @@ details[open] > .agent-summary .chev { transform: rotate(90deg); }
   border-radius: 999px; white-space: nowrap; }
 .chip.ok { background: #dcfce7; color: #166534; }
 .chip.eta { background: #fef3c7; color: #92400e; }   /* ETA — amber, not green */
+.assessed-tag { display: inline-block; margin-left: .4rem; font-size: .72rem;
+  font-weight: 700; color: #166534; background: #dcfce7; padding: .1rem .5rem;
+  border-radius: 999px; vertical-align: middle; }
 .bl-notes { color: var(--muted); font-size: .82rem; margin-top: .4rem; }
 .bl-actions { display: flex; gap: .4rem; margin-top: .6rem; justify-content: flex-end; }
 

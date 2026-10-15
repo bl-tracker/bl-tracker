@@ -184,6 +184,7 @@ def map_fields(content, agent_map=None):
         "tansad_no": tansad,
         "containers": ", ".join(cntrs),
         "container_count": str(count) if count else "",
+        "item": (content.get("godsDesc") or "").strip(),
     }
 
 
@@ -293,8 +294,8 @@ def sync_rows(rows, delay=0.2, only_open=True):
     amap = shipping_agents(sess)  # load the agent code->name table once
     TRACK = ("status", "category", "vessel", "shipping_line", "icd",
              "manifest_date", "carry_in_date", "release_date", "gate_out_date",
-             "tansad_no", "containers", "container_count")
-    fill_only = ("tansad_no", "containers", "container_count")
+             "tansad_no", "containers", "container_count", "item")
+    fill_only = ("tansad_no", "containers", "container_count", "item")
     found_count = 0
     archived = []  # deferred: only trust these if TANeSW is actually responding
     for r in rows:
