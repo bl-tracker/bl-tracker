@@ -40,6 +40,15 @@
     </label>
 
     <label>
+      {{ t('all_kinds') }}
+      <select name="kind">
+        <option value="" {{ 'selected' if not bl.kind }}>—</option>
+        <option value="Container" {{ 'selected' if bl.kind=='Container' }}>{{ t('kind_container') }}</option>
+        <option value="Vehicle" {{ 'selected' if bl.kind=='Vehicle' }}>{{ t('kind_vehicle') }}</option>
+      </select>
+    </label>
+
+    <label>
       {{ t('status') }}
       <input type="text" name="status" value="{{ bl.status or '' }}">
     </label>

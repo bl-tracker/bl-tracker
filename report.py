@@ -10,6 +10,7 @@ from fpdf import FPDF
 
 import db
 from i18n import t
+from util import icd_short
 
 CAT_COLORS = {
     "completed":   ((22, 101, 52),  (220, 252, 231)),
@@ -18,29 +19,18 @@ CAT_COLORS = {
     "other":       ((71, 85, 105),  (241, 245, 249)),
 }
 
-# column key -> (label i18n key, width mm)
+# One professional layout for every PDF: key milestones + TANSAD + category.
 COLS = [
-    ("client", "client", 50),
-    ("bl_no", "bl_no", 34),
-    ("status", "status", 40),
-    ("icd", "icd", 26),
-    ("manifest_date", "manifest_date", 24),
-    ("carry_in_date", "carry_in_date", 24),
-    ("release_date", "release_date", 24),
-    ("gate_out_date", "gate_out_date", 24),
-    ("category", "category", 22),
-]
-
-# Ongoing (the PDF sent to Telegram): item, TANSAD and tax matter most.
-COLS_ACTIVE = [
-    ("client", "client", 44),
+    ("client", "client", 42),
     ("bl_no", "bl_no", 30),
-    ("item", "item", 50),
-    ("status", "status", 36),
-    ("icd", "icd", 22),
-    ("carry_in_date", "carry_in_date", 22),
-    ("tansad_no", "tansad_no", 40),
-    ("duty_paid", "duty_paid", 28),
+    ("status", "status", 32),
+    ("icd", "icd", 18),
+    ("manifest_date", "manifest_date", 20),
+    ("carry_in_date", "carry_in_date", 20),
+    ("release_date", "release_date", 20),
+    ("gate_out_date", "gate_out_date", 20),
+    ("tansad_no", "tansad_no", 34),
+    ("category", "category", 19),
 ]
 
 
@@ -89,8 +79,14 @@ def build_report_pdf(agent_filter=None, lang="sw", scope=None, allowed=None):
         records = [b for b in records if not _is_done(b)]
     elif scope == "done":
         records = [b for b in records if _is_done(b)]
-    cols = COLS_ACTIVE if scope == "active" else COLS
-    counts = db.summary_counts()
+    cols = COLS
+    # counts reflect exactly what's shown (so a one-company report shows that
+    # company's numbers, not the global totals)
+    counts = {"total": len(records), "completed": 0, "in_progress": 0,
+              "problem": 0, "other": 0}
+    for b in records:
+        c = b.get("category") if b.get("category") in counts else "other"
+        counts[c if c in ("completed", "in_progress", "problem") else "other"] += 1
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     no_agent = t("no_agent", lang)
@@ -156,6 +152,8 @@ def build_report_pdf(agent_filter=None, lang="sw", scope=None, allowed=None):
                     pdf.set_font("Helvetica", "", 8)
                     pdf.set_text_color(30, 40, 50)
                     val = b.get(key) or ("-" if key in ("client", "bl_no") else "")
+                    if key == "icd":
+                        val = icd_short(val)
                     pdf.cell(w, ROW_H, pdf.fit(val, w), border="B")
             pdf.ln(ROW_H)
 

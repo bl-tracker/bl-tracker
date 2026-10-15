@@ -263,6 +263,11 @@ details[open] > .agent-summary .chev { transform: rotate(90deg); }
 
 /* overstay chip */
 .chip.over { background: #fee2e2; color: #991b1b; font-weight: 700; }
+.chip.warn { background: #ffedd5; color: #9a3412; font-weight: 700; }
+.synced-note { margin: .4rem 0 0; font-size: .78rem; color: var(--muted); }
+.next-action { margin-top: .45rem; font-size: .82rem; color: var(--brand);
+  background: rgba(31,162,224,.08); border-left: 3px solid var(--accent);
+  padding: .3rem .5rem; border-radius: 6px; }
 
 /* progress stepper */
 .stepper { display: flex; gap: .3rem; margin-top: .5rem; flex-wrap: wrap; }

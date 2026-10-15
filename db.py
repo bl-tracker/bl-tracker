@@ -58,6 +58,7 @@ bls = Table(
     Column("containers", Text, default=""),              # container numbers (comma)
     Column("container_count", String(16), default=""),   # how many containers
     Column("item", Text, default=""),                    # goods / item description
+    Column("kind", String(16), default=""),              # 'Container' or 'Vehicle'
     Column("eta", String(64), default=""),               # expected arrival (Excel)
     Column("last_checked", String(64), default=""),
     Column("created_at", String(64)),
@@ -85,6 +86,16 @@ users = Table(
     Column("created_at", String(64)),
 )
 
+audit = Table(
+    "audit", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("ts", String(64)),
+    Column("user", String(80), default=""),
+    Column("action", String(32), default=""),   # add/edit/delete/import/sync
+    Column("bl_no", String(255), default=""),
+    Column("detail", Text, default=""),
+)
+
 
 def _now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -106,6 +117,7 @@ EXTRA_COLS = {
     "containers": "TEXT",
     "container_count": "VARCHAR(16)",
     "item": "TEXT",
+    "kind": "VARCHAR(16)",
     "eta": "VARCHAR(64)",
 }
 
@@ -138,7 +150,7 @@ def _row_to_dict(row):
     return dict(row._mapping) if row is not None else None
 
 
-def list_bls(search=None, agent=None):
+def list_bls(search=None, agent=None, kind=None):
     stmt = select(bls)
     if search:
         like = f"%{search}%"
@@ -147,9 +159,14 @@ def list_bls(search=None, agent=None):
             bls.c.client.ilike(like),
             bls.c.agent.ilike(like),
             bls.c.shipping_line.ilike(like),
+            bls.c.containers.ilike(like),
+            bls.c.item.ilike(like),
+            bls.c.tansad_no.ilike(like),
         ))
     if agent:
         stmt = stmt.where(bls.c.agent == agent)
+    if kind:
+        stmt = stmt.where(bls.c.kind == kind)
     # Alphabetical: by company (agent) A-Z, then client, then BL number.
     stmt = stmt.order_by(bls.c.agent.asc(), bls.c.client.asc(), bls.c.bl_no.asc())
     with engine.connect() as conn:
@@ -193,6 +210,7 @@ def _clean(data):
         "containers": (data.get("containers") or "").strip(),
         "container_count": str(data.get("container_count") or "").strip(),
         "item": (data.get("item") or "").strip(),
+        "kind": (data.get("kind") or "").strip(),
         "eta": (data.get("eta") or "").strip(),
         "updated_at": now,
     }
@@ -333,6 +351,29 @@ def bls_with_documents():
     with engine.connect() as conn:
         rows = conn.execute(select(bl_documents.c.bl_id)).fetchall()
     return {r[0] for r in rows}
+
+
+# ----- Audit log -----
+def log_audit(user, action, bl_no="", detail=""):
+    try:
+        with engine.begin() as conn:
+            conn.execute(insert(audit).values(
+                ts=_now(), user=(user or "")[:80], action=(action or "")[:32],
+                bl_no=(bl_no or "")[:255], detail=(detail or "")[:500]))
+    except Exception:
+        pass  # auditing must never break the action
+
+
+def list_audit(limit=200):
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(audit).order_by(audit.c.id.desc()).limit(limit)).fetchall()
+    return [_row_to_dict(r) for r in rows]
+
+
+def last_sync_time():
+    with engine.connect() as conn:
+        return conn.execute(select(func.max(bls.c.last_checked))).scalar() or ""
 
 
 # ----- Users -----

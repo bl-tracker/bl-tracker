@@ -126,6 +126,48 @@ def _days_since(s):
         return None
 
 
+OVERSTAY_WARN = int(os.environ.get("OVERSTAY_WARN", "3") or "3")  # days before
+
+
+def _rel_time(iso):
+    """'2026-10-14T21:02:05+00:00' -> 'dakika 5 zilizopita' (current lang)."""
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(str(iso))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        secs = (datetime.now(timezone.utc) - dt).total_seconds()
+    except Exception:
+        return ""
+    lang = current_lang()
+    if secs < 90:
+        return t("just_now", lang)
+    if secs < 5400:
+        n = int(secs // 60)
+        return f"{n} {t('minutes_ago', lang)}"
+    if secs < 129600:
+        n = int(secs // 3600)
+        return f"{n} {t('hours_ago', lang)}"
+    n = int(secs // 86400)
+    return f"{n} {t('days_ago', lang)}"
+
+
+def next_action(bl):
+    """Suggested next step for an ongoing BL, based on where it is."""
+    if bl.get("category") == "completed" or (bl.get("gate_out_date") or "").strip():
+        return ""
+    if (bl.get("release_date") or "").strip():
+        return t("na_transport", current_lang())
+    if (bl.get("tansad_no") or "").strip():
+        return t("na_await_release", current_lang())
+    if (bl.get("carry_in_date") or "").strip():
+        return t("na_submit_tansad", current_lang())
+    if (bl.get("manifest_date") or "").strip():
+        return t("na_carry_in", current_lang())
+    return t("na_await_manifest", current_lang())
+
+
 def current_lang():
     lang = request.args.get("lang") or request.cookies.get("lang") or "sw"
     return "en" if lang == "en" else "sw"
@@ -140,6 +182,9 @@ def inject_helpers():
         "cat_label": lambda c: t(c if c in db.CATEGORIES else "other", lang),
         "days_since": _days_since,
         "overstay_days": OVERSTAY_DAYS,
+        "overstay_warn": max(1, OVERSTAY_DAYS - OVERSTAY_WARN),
+        "icd_short": __import__("util").icd_short,
+        "next_action": next_action,
         "auth_on": auth_enabled(),
         "logged_in": (not auth_enabled()) or bool(session.get("uid")),
         "is_admin": (not auth_enabled()) or session.get("role") == "admin",
@@ -312,6 +357,27 @@ def build_summary_text(lang=None):
     ]
     if not active:
         lines.append(t("tg_all_done", lang))
+
+    # Early warning: BLs at/approaching overstay (acts before penalties hit).
+    warn_from = max(1, OVERSTAY_DAYS - OVERSTAY_WARN)
+
+    def _over_days(b):
+        return _days_since(b.get("manifest_date") or b.get("carry_in_date"))
+    at_risk = []
+    for b in active:
+        d = _over_days(b)
+        if d is not None and d >= warn_from:
+            at_risk.append((d, b))
+    if at_risk:
+        at_risk.sort(key=lambda x: -x[0])
+        lines.append(f"⏰ <b>{t('overstay_warn', lang)} / {t('overstay', lang)}</b>")
+        for d, b in at_risk[:25]:
+            tag = "⚠️" if d >= OVERSTAY_DAYS else "⏰"
+            client = html.escape(b["client"] or "-")
+            bl_no = html.escape(b["bl_no"] or "")
+            lines.append(f"  {tag} {client} — {bl_no} ({d} {t('days', lang)})")
+        lines.append("")
+
     for agent in sorted(by_agent, key=agent_sort):
         items = sorted(by_agent[agent],
                        key=lambda b: CAT_SORT.get(b["category"], 3))
@@ -337,25 +403,105 @@ def welcome():
     return render_template("welcome.html")
 
 
+# ----- Public shipment tracking (no login; shows only the one BL) -----
+@app.route("/track")
+def track():
+    q = request.args.get("bl", "").strip()
+    bl = None
+    if q:
+        matches = db.list_bls(q)
+        bl = next((b for b in matches if (b.get("bl_no") or "").lower() == q.lower()), None)
+        if bl is None and matches:
+            bl = matches[0]
+    return render_template("track.html", q=q, bl=bl)
+
+
+# ----- Excel export / backup (admin) -----
+@app.route("/export.xlsx")
+@admin_required
+def export_xlsx():
+    from openpyxl import Workbook
+    recs = filter_allowed(db.list_bls())
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "BL Tracker"
+    cols = ["bl_no", "client", "agent", "kind", "item", "vessel", "shipping_line",
+            "status", "category", "icd", "eta", "manifest_date", "carry_in_date",
+            "release_date", "gate_out_date", "tansad_no", "duty_paid",
+            "container_count", "containers", "notes", "last_checked"]
+    ws.append([c.replace("_", " ").title() for c in cols])
+    for b in recs:
+        ws.append([b.get(c, "") for c in cols])
+    buf = io.BytesIO()
+    wb.save(buf)
+    resp = make_response(buf.getvalue())
+    resp.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    fname = "BL_Backup_" + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M") + ".xlsx"
+    resp.headers["Content-Disposition"] = f'attachment; filename="{fname}"'
+    return resp
+
+
+# ----- Audit log (admin) -----
+@app.route("/audit")
+@admin_required
+def audit_page():
+    return render_template("audit.html", rows=db.list_audit(300), rel=_rel_time)
+
+
+def _clearing_kpis(records):
+    """Avg manifest->gate-out days (overall + per company) and monthly throughput."""
+    from collections import Counter
+    durations, by_company = [], {}
+    for b in records:
+        if b.get("category") != "completed":
+            continue
+        m, g = str(b.get("manifest_date") or "")[:10], str(b.get("gate_out_date") or "")[:10]
+        try:
+            dm = datetime.strptime(m, "%Y-%m-%d").date()
+            dg = datetime.strptime(g, "%Y-%m-%d").date()
+            d = (dg - dm).days
+        except Exception:
+            continue
+        if 0 <= d <= 400:
+            durations.append(d)
+            ag = (b.get("agent") or "-").strip() or "-"
+            by_company.setdefault(ag, []).append(d)
+    months = Counter()
+    for b in records:
+        g = str(b.get("gate_out_date") or "")[:7]
+        if len(g) == 7:
+            months[g] += 1
+    this_month = months.get(datetime.now(timezone.utc).strftime("%Y-%m"), 0)
+    return {
+        "avg": round(sum(durations) / len(durations), 1) if durations else 0,
+        "count": len(durations),
+        "this_month": this_month,
+        "monthly": sorted(months.items())[-6:],
+        "by_company": sorted(((k, round(sum(v) / len(v), 1)) for k, v in by_company.items()),
+                             key=lambda x: x[1]),
+    }
+
+
 # ----- Dashboard -----
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    from collections import Counter
+    recs = filter_allowed(db.list_bls())
     allow = allowed_agents()
     if allow is None:
         counts = db.summary_counts()
         by_agent = db.counts_by_agent()
         by_icd = db.counts_by_icd(limit=10)
     else:
-        recs = filter_allowed(db.list_bls())
         counts = _counts_from(recs)
-        from collections import Counter
         ac = Counter((r.get("agent") or "").strip() or "-" for r in recs)
         ic = Counter((r.get("icd") or "").strip() for r in recs if (r.get("icd") or "").strip())
         by_agent = sorted(ac.items(), key=lambda x: (-x[1], x[0]))
         by_icd = sorted(ic.items(), key=lambda x: (-x[1], x[0]))[:10]
+    kpis = _clearing_kpis(recs)
     cat_counts = [(c, counts[c]) for c in db.CATEGORIES]
-    return render_template("dashboard.html", counts=counts,
+    return render_template("dashboard.html", counts=counts, kpis=kpis,
                            by_agent=by_agent, by_icd=by_icd, cat_counts=cat_counts)
 
 
@@ -366,14 +512,18 @@ def bl():
     lang = current_lang()
     search = request.args.get("q", "").strip()
     agent = request.args.get("agent", "").strip()
+    kind = request.args.get("kind", "").strip()
+    if kind not in ("Container", "Vehicle"):
+        kind = ""
     allow = allowed_agents()
     # a restricted user may only filter within their own companies
     if allow is not None and agent and agent not in allow:
         agent = ""
-    records = filter_allowed(db.list_bls(search or None, agent or None))
+    records = filter_allowed(db.list_bls(search or None, agent or None, kind or None))
     counts = _counts_from(records)
     doc_ids = db.bls_with_documents()
     agents = db.agents_list() if allow is None else sorted(allow)
+    last_synced = _rel_time(db.last_sync_time())
 
     # Group by company (agent) for the collapsible accordion. Active BLs
     # (not yet gated out) and completed ones are shown in separate sections.
@@ -394,7 +544,8 @@ def bl():
     return render_template("index.html",
                            active_groups=active_groups, done_groups=done_groups,
                            counts=counts, search=search, doc_ids=doc_ids,
-                           agents=agents, agent=agent)
+                           agents=agents, agent=agent, kind=kind,
+                           last_synced=last_synced)
 
 
 @app.route("/set-lang/<lang>")
@@ -438,8 +589,11 @@ def add():
         if not request.form.get("bl_no", "").strip():
             flash(t("required", lang), "error")
             return render_template("form.html", bl=request.form, mode="add", agents=db.agents_list())
-        bl_id = db.create_bl(_form_with_carrier())
+        data = _form_with_carrier()
+        bl_id = db.create_bl(data)
         _save_uploaded_doc(bl_id)
+        db.log_audit(session.get("uname", "admin"), "add", data.get("bl_no", ""),
+                     f"{data.get('client','')} / {data.get('agent','')}")
         flash(t("created_ok", lang), "ok")
         return redirect(url_for("bl"))
     return render_template("form.html", bl={}, mode="add", agents=db.agents_list())
@@ -458,6 +612,8 @@ def edit(bl_id):
             return render_template("form.html", bl=request.form, mode="edit", bl_id=bl_id, agents=db.agents_list())
         db.update_bl(bl_id, _form_with_carrier())
         _save_uploaded_doc(bl_id)
+        db.log_audit(session.get("uname", "admin"), "edit",
+                     request.form.get("bl_no", ""), bl.get("client", ""))
         flash(t("updated_ok", lang), "ok")
         return redirect(url_for("bl"))
     has_doc = db.get_document(bl_id) is not None
@@ -468,7 +624,11 @@ def edit(bl_id):
 @admin_required
 def delete(bl_id):
     lang = current_lang()
+    bl = db.get_bl(bl_id)
     db.delete_bl(bl_id)
+    if bl:
+        db.log_audit(session.get("uname", "admin"), "delete", bl.get("bl_no", ""),
+                     bl.get("client", ""))
     flash(t("deleted_ok", lang), "ok")
     return redirect(url_for("bl"))
 
@@ -489,7 +649,7 @@ def document(bl_id):
 
 
 # ----- Import Excel / CSV -----
-IMPORT_FIELDS = ["bl_no", "client", "agent", "vessel", "shipping_line", "status", "category", "bl_date", "notes", "tansad_no", "duty_paid", "item"]
+IMPORT_FIELDS = ["bl_no", "client", "agent", "vessel", "shipping_line", "status", "category", "bl_date", "notes", "tansad_no", "duty_paid", "item", "kind"]
 HEADER_ALIASES = {
     "bl": "bl_no", "bl no": "bl_no", "bl_no": "bl_no", "bl number": "bl_no", "namba ya bl": "bl_no",
     "client": "client", "mteja": "client", "customer": "client",
@@ -503,6 +663,7 @@ HEADER_ALIASES = {
     "tansad_no": "tansad_no", "tansad": "tansad_no", "tansad no": "tansad_no", "tansad no.": "tansad_no",
     "duty_paid": "duty_paid", "duty": "duty_paid", "tax paid": "duty_paid", "ushuru": "duty_paid",
     "item": "item", "items": "item", "bidhaa": "item", "goods": "item",
+    "kind": "kind", "type": "kind", "aina": "kind",
 }
 CATEGORY_ALIASES = {
     "completed": "completed", "imekamilika": "completed", "zimekamilika": "completed", "done": "completed",
@@ -582,9 +743,12 @@ def import_bls():
             flash(t("import_error", lang), "error")
             return render_template("import.html")
 
-        if request.form.get("replace"):
+        replaced = bool(request.form.get("replace"))
+        if replaced:
             db.clear_all_bls()
         n = db.bulk_create(rows)
+        db.log_audit(session.get("uname", "admin"), "import", "",
+                     f"{n} records{' (replace)' if replaced else ''}")
         flash(t("import_ds_ok" if dservices else "import_ok", lang).format(n=n), "ok")
         return redirect(url_for("bl"))
     return render_template("import.html")
@@ -673,6 +837,8 @@ def _sync_worker(only_open, do_notify):
         if do_notify and changes:
             send_telegram(build_changes_text(changes))
         _sync_state["last"] = {"ok": True, **result}
+        db.log_audit("system", "sync",
+                     "", f"checked {result.get('checked')}, updated {result.get('updated')}")
     except Exception as e:  # never die silently — report to logs + Telegram
         import traceback
         traceback.print_exc()

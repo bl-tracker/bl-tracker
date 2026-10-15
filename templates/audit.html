@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="formwrap">
+  <h2>{{ t('audit_title') }}</h2>
+  <table class="utable">
+    <thead>
+      <tr>
+        <th>{{ t('audit_when') }}</th>
+        <th>{{ t('audit_who') }}</th>
+        <th>{{ t('audit_what') }}</th>
+        <th>BL</th>
+        <th>{{ t('audit_detail') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="muted" style="white-space:nowrap">{{ rel(r.ts) }}</td>
+        <td>{{ r.user }}</td>
+        <td><span class="badge badge-{{ 'problem' if r.action=='delete' else 'in_progress' if r.action in ('edit','add') else 'completed' }}">{{ r.action }}</span></td>
+        <td class="mono">{{ r.bl_no }}</td>
+        <td class="muted">{{ r.detail }}</td>
+      </tr>
+      {% endfor %}
+      {% if not rows %}
+      <tr><td colspan="5" class="muted">—</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

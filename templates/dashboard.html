@@ -18,6 +18,14 @@
   </div>
 </section>
 
+<section class="summary">
+  <h2>{{ t('kpi_title') }}</h2>
+  <div class="cards">
+    <div class="card"><span class="num">{{ kpis.avg }}</span><span class="lbl">{{ t('kpi_avg_days') }}</span></div>
+    <div class="card card-ok"><span class="num">{{ kpis.this_month }}</span><span class="lbl">{{ t('kpi_this_month') }}</span></div>
+  </div>
+</section>
+
 {% macro barchart(rows, total, color) %}
   <div class="bars">
     {% set maxv = (rows | map(attribute=1) | max) if rows else 1 %}
@@ -58,6 +66,20 @@
     {% else %}
       <p class="muted">—</p>
     {% endif %}
+  </div>
+
+  <div class="dash-card">
+    <h3>{{ t('kpi_monthly') }}</h3>
+    {% if kpis.monthly %}
+      {{ barchart(kpis.monthly, 0, '#1b8a4b') }}
+    {% else %}<p class="muted">—</p>{% endif %}
+  </div>
+
+  <div class="dash-card">
+    <h3>{{ t('kpi_by_company') }} ({{ t('days_unit') }})</h3>
+    {% if kpis.by_company %}
+      {{ barchart(kpis.by_company, 0, 'var(--brand)') }}
+    {% else %}<p class="muted">—</p>{% endif %}
   </div>
 </section>
 

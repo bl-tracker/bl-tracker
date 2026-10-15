@@ -8,7 +8,8 @@
     <h1 class="hero-title">{{ t('w_welcome') }} <span>{{ t('brand') }}</span></h1>
     <p class="hero-intro">{{ t('w_intro') }}</p>
     <div class="hero-cta">
-      <a href="{{ url_for('bl') }}" class="btn btn-primary btn-lg">{{ t('w_track_btn') }}</a>
+      <a href="{{ url_for('track') }}" class="btn btn-primary btn-lg">🔎 {{ t('track_title') }}</a>
+      <a href="{{ url_for('bl') }}" class="btn btn-lg btn-outline">{{ t('w_track_btn') }}</a>
       <a href="#contact" class="btn btn-lg btn-outline">{{ t('w_contact_btn') }}</a>
     </div>
   </div>

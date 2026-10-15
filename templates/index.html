@@ -21,14 +21,18 @@
     <span class="step {{ 'done' if bl.gate_out_date }}">{{ t('gate_out_date') }}</span>
   </div>
 
+  {% set na = next_action(bl) %}
+  {% if na %}<div class="next-action">➡️ {{ t('next_action') }}: <strong>{{ na }}</strong></div>{% endif %}
+
   <div class="bl-meta">
     {% set ref = bl.manifest_date or bl.carry_in_date %}
     {% set d = days_since(ref) %}
     {% if d is not none and d >= 0 and bl.category != 'completed' %}
       {% set over = d >= overstay_days %}
-      <span class="chip {{ 'over' if over }}">{% if over %}⚠️ {{ t('overstay') }} · {% endif %}⏳ {{ d }} {{ t('days') }} {{ t('at_port') }}</span>
+      {% set warn = d >= overstay_warn and not over %}
+      <span class="chip {{ 'over' if over }}{{ 'warn' if warn }}">{% if over %}⚠️ {{ t('overstay') }} · {% elif warn %}⏰ {{ t('overstay_warn') }} · {% endif %}⏳ {{ d }} {{ t('days') }} {{ t('at_port') }}</span>
     {% endif %}
-    {% if bl.icd %}<span class="chip">🏭 {{ t('icd') }}: {{ bl.icd }}</span>{% endif %}
+    {% if bl.icd %}<span class="chip" title="{{ bl.icd }}">🏭 {{ icd_short(bl.icd) }}</span>{% endif %}
     {% if bl.manifest_date %}<span class="chip">📅 {{ t('manifest_date') }}: {{ bl.manifest_date }}</span>
     {% elif bl.eta %}<span class="chip eta">🕗 {{ t('eta') }}: {{ bl.eta }}</span>{% endif %}
     {% if bl.carry_in_date %}<span class="chip">📥 {{ t('carry_in_date') }}: {{ bl.carry_in_date }}</span>{% endif %}
@@ -36,9 +40,7 @@
     {% if bl.gate_out_date %}<span class="chip ok">🚚 {{ t('gate_out_date') }}: {{ bl.gate_out_date }}</span>{% endif %}
     {% if bl.vessel %}<span class="chip">🛳️ {{ bl.vessel }}</span>{% endif %}
     {% if bl.shipping_line %}<span class="chip">🚢 {{ bl.shipping_line }}</span>{% endif %}
-    {% if bl.item %}<span class="chip">📦 {{ t('item') }}: {{ bl.item }}</span>{% endif %}
     {% if bl.tansad_no %}<span class="chip">🧾 {{ t('tansad_no') }}: {{ bl.tansad_no }}</span>{% endif %}
-    {% if bl.duty_paid %}<span class="chip">💰 {{ t('duty_paid') }}: {{ bl.duty_paid }}</span>{% endif %}
     {% if bl.container_count %}<span class="chip">🧮 {{ bl.container_count }} cntr</span>{% endif %}
     {% if bl.containers %}<span class="chip mono">🔢 {{ bl.containers }}</span>{% endif %}
   </div>
@@ -106,7 +108,9 @@
     </form>
     {% endif %}
     <a href="{{ url_for('report_pdf', agent=agent) if agent else url_for('report_pdf') }}" target="_blank" class="btn btn-ghost">📄 {{ t('print_pdf') }}</a>
+    {% if is_admin %}<a href="{{ url_for('export_xlsx') }}" class="btn btn-ghost">⬇ {{ t('export_excel') }}</a>{% endif %}
   </div>
+  {% if last_synced %}<p class="synced-note">🔄 {{ t('last_synced') }}: {{ last_synced }}</p>{% endif %}
 </section>
 
 <section class="list">
@@ -120,6 +124,11 @@
       {% endfor %}
     </select>
     {% endif %}
+    <select name="kind" onchange="this.form.submit()">
+      <option value="">{{ t('all_kinds') }}</option>
+      <option value="Container" {{ 'selected' if kind == 'Container' }}>{{ t('kind_container') }}</option>
+      <option value="Vehicle" {{ 'selected' if kind == 'Vehicle' }}>{{ t('kind_vehicle') }}</option>
+    </select>
     <button type="submit" class="btn">{{ t('search') }}</button>
   </form>
 

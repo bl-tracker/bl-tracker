@@ -134,6 +134,47 @@ STRINGS = {
     "eta": {"sw": "ETA (matarajio)", "en": "ETA (expected)"},
     "item": {"sw": "Item (bidhaa)", "en": "Item"},
     "assessed": {"sw": "Assessed", "en": "Assessed"},
+    # relative time
+    "just_now": {"sw": "sasa hivi", "en": "just now"},
+    "minutes_ago": {"sw": "dakika zilizopita", "en": "min ago"},
+    "hours_ago": {"sw": "masaa zilizopita", "en": "h ago"},
+    "days_ago": {"sw": "siku zilizopita", "en": "days ago"},
+    "last_synced": {"sw": "Imesasishwa", "en": "Last synced"},
+    # next action
+    "next_action": {"sw": "Hatua inayofuata", "en": "Next action"},
+    "na_transport": {"sw": "Panga usafirishaji / toa ICD", "en": "Arrange transport / gate-out"},
+    "na_await_release": {"sw": "Subiri release (TANSAD imewasilishwa)", "en": "Await release (TANSAD submitted)"},
+    "na_submit_tansad": {"sw": "Wasilisha TANSAD", "en": "Submit TANSAD"},
+    "na_carry_in": {"sw": "Panga carry-in ICD", "en": "Arrange carry-in to ICD"},
+    "na_await_manifest": {"sw": "Subiri manifest TANeSW", "en": "Await TANeSW manifest"},
+    # overstay warning
+    "overstay_warn": {"sw": "Karibu overstay", "en": "Approaching overstay"},
+    # kind filter
+    "all_kinds": {"sw": "Aina zote", "en": "All types"},
+    "kind_container": {"sw": "Kontena", "en": "Container"},
+    "kind_vehicle": {"sw": "Gari", "en": "Vehicle"},
+    # tracking page
+    "track_title": {"sw": "Fuatilia Mzigo Wako", "en": "Track Your Shipment"},
+    "track_intro": {"sw": "Weka namba ya BL kuona hali ya mzigo wako.", "en": "Enter your BL number to see your shipment status."},
+    "track_btn": {"sw": "Fuatilia", "en": "Track"},
+    "track_notfound": {"sw": "Hakuna rekodi kwa namba hiyo. Wasiliana nasi.", "en": "No record for that number. Please contact us."},
+    "track_placeholder": {"sw": "Namba ya BL", "en": "BL number"},
+    "nav_track": {"sw": "Fuatilia", "en": "Track"},
+    # export + audit
+    "export_excel": {"sw": "Pakua Excel", "en": "Download Excel"},
+    "nav_audit": {"sw": "Kumbukumbu", "en": "Audit log"},
+    "audit_title": {"sw": "Kumbukumbu za Mabadiliko", "en": "Activity / Audit Log"},
+    "audit_when": {"sw": "Lini", "en": "When"},
+    "audit_who": {"sw": "Nani", "en": "Who"},
+    "audit_what": {"sw": "Kitendo", "en": "Action"},
+    "audit_detail": {"sw": "Maelezo", "en": "Detail"},
+    # KPIs
+    "kpi_title": {"sw": "Utendaji (KPI)", "en": "Performance (KPI)"},
+    "kpi_avg_days": {"sw": "Wastani wa siku (manifest→gate-out)", "en": "Avg days (manifest→gate-out)"},
+    "kpi_this_month": {"sw": "Zimetoka mwezi huu", "en": "Gated out this month"},
+    "kpi_by_company": {"sw": "Wastani wa siku kwa kampuni", "en": "Avg days by company"},
+    "kpi_monthly": {"sw": "Zilizotoka kwa mwezi", "en": "Gated out per month"},
+    "days_unit": {"sw": "siku", "en": "days"},
     "manifest_from_tanesw": {"sw": "Hujazwa na TANeSW ikisoma manifest.",
                              "en": "Filled by TANeSW once the manifest is read."},
     # Weekly report
