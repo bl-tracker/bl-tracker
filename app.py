@@ -176,8 +176,12 @@ def current_lang():
 @app.context_processor
 def inject_helpers():
     lang = current_lang()
+    hr = (datetime.now(timezone.utc) + timedelta(hours=3)).hour  # EAT
+    greet_key = ("good_morning" if hr < 12 else
+                 "good_afternoon" if hr < 17 else "good_evening")
     return {
         "lang": lang,
+        "greeting": t(greet_key, lang),
         "t": lambda key: t(key, lang),
         "cat_label": lambda c: t(c if c in db.CATEGORIES else "other", lang),
         "days_since": _days_since,

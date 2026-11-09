@@ -132,6 +132,12 @@ STRINGS = {
     "containers": {"sw": "Kontena (namba)", "en": "Containers"},
     "container_count": {"sw": "Idadi ya kontena", "en": "Container count"},
     "eta": {"sw": "ETA (matarajio)", "en": "ETA (expected)"},
+    "good_morning": {"sw": "Habari za asubuhi", "en": "Good morning"},
+    "good_afternoon": {"sw": "Habari za mchana", "en": "Good afternoon"},
+    "good_evening": {"sw": "Habari za jioni", "en": "Good evening"},
+    "nav_grp_main": {"sw": "Menyu", "en": "Menu"},
+    "nav_grp_admin": {"sw": "Usimamizi", "en": "Admin"},
+    "nav_grp_account": {"sw": "Akaunti", "en": "Account"},
     "item": {"sw": "Item (bidhaa)", "en": "Item"},
     "assessed": {"sw": "Assessed", "en": "Assessed"},
     # relative time

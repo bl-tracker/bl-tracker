@@ -41,6 +41,33 @@
 
 <section class="dash-grid">
   <div class="dash-card">
+    <h3>{{ t('dash_by_status') }}</h3>
+    {% set total = counts.total or 1 %}
+    {% set segs = [('completed', counts.completed, '#2dd4a7'), ('in_progress', counts.in_progress, '#38bdf8'), ('problem', counts.problem, '#fb7185'), ('other', counts.other, '#94a3b8')] %}
+    {% set ns = namespace(acc=0, stops=[]) %}
+    {% for key, n, col in segs %}
+      {% set start = ns.acc / total * 100 %}
+      {% set ns.acc = ns.acc + n %}
+      {% set end = ns.acc / total * 100 %}
+      {% set _ = ns.stops.append(col ~ ' ' ~ (start|round(2)) ~ '% ' ~ (end|round(2)) ~ '%') %}
+    {% endfor %}
+    <div class="donut-wrap">
+      <div class="donut" style="background: conic-gradient({{ ns.stops|join(', ') }})">
+        <div class="donut-center"><b>{{ counts.total }}</b><span>{{ t('total') }}</span></div>
+      </div>
+      <div class="legend">
+        {% for key, n, col in segs %}
+        <div class="legend-row">
+          <span class="legend-dot" style="background: {{ col }}"></span>
+          <span class="ln">{{ cat_label(key) }}</span>
+          <span class="lv">{{ n }} · {{ (n / total * 100) | round(0, 'floor') }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-card">
     <h3>{{ t('dash_by_company') }}</h3>
     {{ barchart(by_agent, counts.total, 'var(--brand)') }}
   </div>
