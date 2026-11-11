@@ -40,11 +40,12 @@ HEADERS = {
 
 # process-code -> which milestone date it fills. Tunachukua tarehe ya HIVI
 # KARIBUNI zaidi (max) kwa kila msimbo.
-MANIFEST_CODES = ("A02", "A01")   # Import Manifest Approved / Submitted
-CARRY_IN_CODES = ("C04", "C01")   # Carry In End / Start
-RELEASE_CODES  = ("T04",)         # TANSAD Declaration Release
-GATE_OUT_CODES = ("C62", "C60")   # Gate Out Confirm End / Start
-TANSAD_CODES   = ("T03", "T04")   # TANSAD Declaration Receipt / Release
+MANIFEST_CODES  = ("A02", "A01")   # Import Manifest Approved / Submitted
+DISCHARGE_CODES = ("B12",)         # Discharge Result Report Approved End
+CARRY_IN_CODES  = ("C04", "C01")   # Carry In End / Start
+RELEASE_CODES   = ("T04",)         # TANSAD Declaration Release
+GATE_OUT_CODES  = ("C62", "C60")   # Gate Out Confirm End / Start
+TANSAD_CODES    = ("T03", "T04")   # TANSAD Declaration Receipt / Release
 
 
 def _is_released_overstay(status):
@@ -178,6 +179,7 @@ def map_fields(content, agent_map=None):
         "shipping_line": shipping_line,
         "icd": icd,
         "manifest_date": _milestone(plist, MANIFEST_CODES),
+        "discharge_date": _milestone(plist, DISCHARGE_CODES),
         "carry_in_date": _milestone(plist, CARRY_IN_CODES),
         "release_date": _milestone(plist, RELEASE_CODES),
         "gate_out_date": gate_out,
@@ -293,8 +295,8 @@ def sync_rows(rows, delay=0.2, only_open=True):
     sess = requests.Session()
     amap = shipping_agents(sess)  # load the agent code->name table once
     TRACK = ("status", "category", "vessel", "shipping_line", "icd",
-             "manifest_date", "carry_in_date", "release_date", "gate_out_date",
-             "tansad_no", "containers", "container_count", "item")
+             "manifest_date", "discharge_date", "carry_in_date", "release_date",
+             "gate_out_date", "tansad_no", "containers", "container_count", "item")
     fill_only = ("tansad_no", "containers", "container_count", "item")
     found_count = 0
     archived = []  # deferred: only trust these if TANeSW is actually responding

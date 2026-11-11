@@ -24,6 +24,14 @@ STRINGS = {
     "overstay": {"sw": "OVERSTAY", "en": "OVERSTAY"},
     "progress": {"sw": "Hatua", "en": "Progress"},
 
+    # Storage (demurrage) — 7 free days then charges
+    "storage": {"sw": "STORAGE", "en": "STORAGE"},
+    "storage_soon": {"sw": "Storage inakaribia", "en": "Storage approaching"},
+    "storage_from": {"sw": "Storage inahesabiwa tangu", "en": "Storage counted since"},
+    "storage_starts": {"sw": "Storage itaanza", "en": "Storage starts"},
+    "free_left": {"sw": "Free days zilizobaki", "en": "Free days left"},
+    "discharge_date": {"sw": "Discharge", "en": "Discharge"},
+
     # Dashboard
     "dash_title": {"sw": "Dashboard ya Takwimu", "en": "Statistics Dashboard"},
     "dash_by_company": {"sw": "BL kwa Kampuni", "en": "BL by Company"},

@@ -50,6 +50,7 @@ bls = Table(
     Column("notes", Text, default=""),
     Column("icd", String(255), default=""),             # ICD / Port location
     Column("manifest_date", String(64), default=""),
+    Column("discharge_date", String(64), default=""),   # Discharge Result Report Approved (B12)
     Column("carry_in_date", String(64), default=""),
     Column("release_date", String(64), default=""),
     Column("gate_out_date", String(64), default=""),
@@ -109,6 +110,7 @@ EXTRA_COLS = {
     "vessel": "VARCHAR(255)",
     "icd": "VARCHAR(255)",
     "manifest_date": "VARCHAR(64)",
+    "discharge_date": "VARCHAR(64)",
     "carry_in_date": "VARCHAR(64)",
     "release_date": "VARCHAR(64)",
     "gate_out_date": "VARCHAR(64)",
@@ -202,6 +204,7 @@ def _clean(data):
         "notes": (data.get("notes") or "").strip(),
         "icd": (data.get("icd") or "").strip(),
         "manifest_date": (data.get("manifest_date") or "").strip(),
+        "discharge_date": (data.get("discharge_date") or "").strip(),
         "carry_in_date": (data.get("carry_in_date") or "").strip(),
         "release_date": (data.get("release_date") or "").strip(),
         "gate_out_date": (data.get("gate_out_date") or "").strip(),
@@ -234,7 +237,8 @@ def update_bl(bl_id, data):
 # TANeSW is authoritative for these — they are set even when empty (so a stale
 # value, e.g. a port gate-out date, gets cleared).
 TESWS_CLEAR_FIELDS = ("status", "category", "vessel", "shipping_line", "icd",
-                      "manifest_date", "carry_in_date", "release_date", "gate_out_date")
+                      "manifest_date", "discharge_date", "carry_in_date",
+                      "release_date", "gate_out_date")
 # These TANeSW only FILLS when it has a value — it never wipes an Excel/manual
 # value (duty_paid is manual-only and not here at all).
 TESWS_FILL_FIELDS = ("tansad_no", "containers", "container_count", "item")

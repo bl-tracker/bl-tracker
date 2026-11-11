@@ -25,16 +25,16 @@
   {% if na %}<div class="next-action">➡️ {{ t('next_action') }}: <strong>{{ na }}</strong></div>{% endif %}
 
   <div class="bl-meta">
-    {% set ref = bl.manifest_date or bl.carry_in_date %}
-    {% set d = days_since(ref) %}
-    {% if d is not none and d >= 0 and bl.category != 'completed' %}
-      {% set over = d >= overstay_days %}
-      {% set warn = d >= overstay_warn and not over %}
-      <span class="chip {{ 'over' if over }}{{ 'warn' if warn }}">{% if over %}⚠️ {{ t('overstay') }} · {% elif warn %}⏰ {{ t('overstay_warn') }} · {% endif %}⏳ {{ d }} {{ t('days') }} {{ t('at_port') }}</span>
+    {% set st = storage_info(bl) %}
+    {% if st and st.active %}
+      <span class="chip over" title="{{ t('storage_from') }} {{ st.free_until }}">⚠️ {{ t('storage') }}: {{ st.days }} {{ t('days') }}</span>
+    {% elif st %}
+      <span class="chip warn" title="{{ t('storage_starts') }} {{ st.free_until }}">🆓 {{ t('free_left') }}: {{ st.free_left }} {{ t('days') }}</span>
     {% endif %}
     {% if bl.icd %}<span class="chip" title="{{ bl.icd }}">🏭 {{ icd_short(bl.icd) }}</span>{% endif %}
     {% if bl.manifest_date %}<span class="chip">📅 {{ t('manifest_date') }}: {{ bl.manifest_date }}</span>
     {% elif bl.eta %}<span class="chip eta">🕗 {{ t('eta') }}: {{ bl.eta }}</span>{% endif %}
+    {% if bl.discharge_date %}<span class="chip">⚓ {{ t('discharge_date') }}: {{ bl.discharge_date }}</span>{% endif %}
     {% if bl.carry_in_date %}<span class="chip">📥 {{ t('carry_in_date') }}: {{ bl.carry_in_date }}</span>{% endif %}
     {% if bl.release_date %}<span class="chip ok">✅ {{ t('release_date') }}: {{ bl.release_date }}</span>{% endif %}
     {% if bl.gate_out_date %}<span class="chip ok">🚚 {{ t('gate_out_date') }}: {{ bl.gate_out_date }}</span>{% endif %}

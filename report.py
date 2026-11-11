@@ -10,7 +10,7 @@ from fpdf import FPDF
 
 import db
 from i18n import t
-from util import icd_short
+from util import icd_short, storage_info
 
 CAT_COLORS = {
     "completed":   ((22, 101, 52),  (220, 252, 231)),
@@ -21,17 +21,29 @@ CAT_COLORS = {
 
 # One professional layout for every PDF: key milestones + TANSAD + category.
 COLS = [
-    ("client", "client", 42),
-    ("bl_no", "bl_no", 30),
-    ("status", "status", 32),
-    ("icd", "icd", 18),
-    ("manifest_date", "manifest_date", 20),
-    ("carry_in_date", "carry_in_date", 20),
-    ("release_date", "release_date", 20),
-    ("gate_out_date", "gate_out_date", 20),
-    ("tansad_no", "tansad_no", 34),
-    ("category", "category", 19),
+    ("client", "client", 40),
+    ("bl_no", "bl_no", 28),
+    ("status", "status", 30),
+    ("icd", "icd", 20),
+    ("manifest_date", "manifest_date", 19),
+    ("carry_in_date", "carry_in_date", 19),
+    ("release_date", "release_date", 19),
+    ("gate_out_date", "gate_out_date", 19),
+    ("storage", "storage", 18),
+    ("tansad_no", "tansad_no", 30),
+    ("category", "category", 18),
 ]
+
+
+def _storage_cell(b):
+    """Short storage label for the PDF: 'N' chargeable days, 'Fn' free days left,
+    or '' when not applicable / already gated out."""
+    info = storage_info(b)
+    if not info:
+        return ""
+    if info["active"]:
+        return f"{info['days']}d"
+    return f"F{info['free_left']}"
 
 
 def _s(text):
@@ -148,6 +160,11 @@ def build_report_pdf(agent_filter=None, lang="sw", scope=None, allowed=None):
                     pdf.set_text_color(*text_rgb)
                     pdf.set_fill_color(*bg_rgb)
                     pdf.cell(w, ROW_H, pdf.fit(t(cat, lang), w), border="B", fill=True)
+                elif key == "storage":
+                    sc = _storage_cell(b)
+                    pdf.set_font("Helvetica", "B" if sc.endswith("d") else "", 8)
+                    pdf.set_text_color(153, 27, 27) if sc.endswith("d") else pdf.set_text_color(120, 90, 20)
+                    pdf.cell(w, ROW_H, pdf.fit(sc, w), border="B")
                 else:
                     pdf.set_font("Helvetica", "", 8)
                     pdf.set_text_color(30, 40, 50)

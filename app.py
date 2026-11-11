@@ -168,6 +168,11 @@ def next_action(bl):
     return t("na_await_manifest", current_lang())
 
 
+# ICD storage (demurrage) — the rule lives in util.storage_info so the app and
+# the PDF report share one implementation (7 free days from discharge/carry-in).
+from util import storage_info, storage_days, STORAGE_FREE_DAYS  # noqa: E402
+
+
 def current_lang():
     lang = request.args.get("lang") or request.cookies.get("lang") or "sw"
     return "en" if lang == "en" else "sw"
@@ -189,6 +194,9 @@ def inject_helpers():
         "overstay_warn": max(1, OVERSTAY_DAYS - OVERSTAY_WARN),
         "icd_short": __import__("util").icd_short,
         "next_action": next_action,
+        "storage_info": storage_info,
+        "storage_days": storage_days,
+        "storage_free_days": STORAGE_FREE_DAYS,
         "auth_on": auth_enabled(),
         "logged_in": (not auth_enabled()) or bool(session.get("uid")),
         "is_admin": (not auth_enabled()) or session.get("role") == "admin",
@@ -362,24 +370,32 @@ def build_summary_text(lang=None):
     if not active:
         lines.append(t("tg_all_done", lang))
 
-    # Early warning: BLs at/approaching overstay (acts before penalties hit).
-    warn_from = max(1, OVERSTAY_DAYS - OVERSTAY_WARN)
-
-    def _over_days(b):
-        return _days_since(b.get("manifest_date") or b.get("carry_in_date"))
-    at_risk = []
+    # ICD storage (demurrage): BLs past their 7 free days and not yet gated out,
+    # plus those in the last 2 free days (early warning before charges start).
+    storing, warning = [], []
     for b in active:
-        d = _over_days(b)
-        if d is not None and d >= warn_from:
-            at_risk.append((d, b))
-    if at_risk:
-        at_risk.sort(key=lambda x: -x[0])
-        lines.append(f"⏰ <b>{t('overstay_warn', lang)} / {t('overstay', lang)}</b>")
-        for d, b in at_risk[:25]:
-            tag = "⚠️" if d >= OVERSTAY_DAYS else "⏰"
+        info = storage_info(b)
+        if not info:
+            continue
+        if info["active"]:
+            storing.append((info["days"], b))
+        elif info["free_left"] <= 2:
+            warning.append((info["free_left"], b))
+    if storing:
+        storing.sort(key=lambda x: -x[0])
+        lines.append(f"⚠️ <b>{t('storage', lang)}</b>")
+        for d, b in storing[:25]:
             client = html.escape(b["client"] or "-")
             bl_no = html.escape(b["bl_no"] or "")
-            lines.append(f"  {tag} {client} — {bl_no} ({d} {t('days', lang)})")
+            lines.append(f"  ⚠️ {client} — {bl_no} ({d} {t('days', lang)})")
+        lines.append("")
+    if warning:
+        warning.sort(key=lambda x: x[0])
+        lines.append(f"⏰ <b>{t('storage_soon', lang)}</b>")
+        for fl, b in warning[:15]:
+            client = html.escape(b["client"] or "-")
+            bl_no = html.escape(b["bl_no"] or "")
+            lines.append(f"  ⏰ {client} — {bl_no} ({t('free_left', lang)}: {fl})")
         lines.append("")
 
     for agent in sorted(by_agent, key=agent_sort):
@@ -430,12 +446,12 @@ def export_xlsx():
     ws = wb.active
     ws.title = "BL Tracker"
     cols = ["bl_no", "client", "agent", "kind", "item", "vessel", "shipping_line",
-            "status", "category", "icd", "eta", "manifest_date", "carry_in_date",
-            "release_date", "gate_out_date", "tansad_no", "duty_paid",
+            "status", "category", "icd", "eta", "manifest_date", "discharge_date",
+            "carry_in_date", "release_date", "gate_out_date", "tansad_no", "duty_paid",
             "container_count", "containers", "notes", "last_checked"]
-    ws.append([c.replace("_", " ").title() for c in cols])
+    ws.append([c.replace("_", " ").title() for c in cols] + ["Storage Days"])
     for b in recs:
-        ws.append([b.get(c, "") for c in cols])
+        ws.append([b.get(c, "") for c in cols] + [storage_days(b) or ""])
     buf = io.BytesIO()
     wb.save(buf)
     resp = make_response(buf.getvalue())
@@ -922,9 +938,7 @@ def build_weekly_text(lang=None, window=7):
     gated = [b for b in records if within(b.get("gate_out_date"))]
     manif = [b for b in records if within(b.get("manifest_date"))]
     ongoing = [b for b in records if not is_done(b)]
-    overdue = [b for b in ongoing
-               if (_days_since(b.get("manifest_date") or b.get("carry_in_date"))
-                   or -1) >= OVERSTAY_DAYS]
+    overdue = [b for b in ongoing if storage_days(b) >= 1]   # accruing storage
 
     no_agent = t("no_agent", lang)
 
@@ -938,7 +952,7 @@ def build_weekly_text(lang=None, window=7):
              f"{t('wk_gated', lang)}: <b>{len(gated)}</b>  ·  "
              f"\U0001F195 {t('wk_manifested', lang)}: <b>{len(manif)}</b>",
              f"\U0001F6A2 {t('wk_ongoing', lang)}: <b>{len(ongoing)}</b>  ·  "
-             f"⚠️ {t('overstay', lang)}: <b>{len(overdue)}</b>", ""]
+             f"⚠️ {t('storage', lang)}: <b>{len(overdue)}</b>", ""]
 
     def section(title, items, emoji):
         if not items:
@@ -955,7 +969,7 @@ def build_weekly_text(lang=None, window=7):
     section(t("wk_gated", lang), gated, "✅")
     section(t("wk_manifested", lang), manif, "\U0001F195")
     if overdue:
-        section(t("overstay", lang), overdue, "⚠️")
+        section(t("storage", lang), overdue, "⚠️")
 
     lines.append(f"{t('tg_time', lang)}: {now}")
     text = "\n".join(lines)
