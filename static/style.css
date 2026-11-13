@@ -207,14 +207,21 @@ h3 { font-size: .98rem; margin: 0 0 .7rem; }
 .badge-problem { color: var(--prob); background: rgba(251,113,133,.14); border-color: rgba(251,113,133,.3); }
 .badge-other { color: var(--other); background: rgba(148,163,184,.14); border-color: rgba(148,163,184,.3); }
 
-/* stepper */
-.stepper { display: flex; gap: .4rem; margin: .7rem 0; flex-wrap: wrap; }
-.step { flex: 1; min-width: 70px; text-align: center; font-size: .68rem; font-weight: 600;
-  color: var(--faint); background: var(--surface); border: 1px solid var(--line);
-  padding: .3rem .2rem; border-radius: 8px; position: relative; }
-.step.done { color: var(--accent-ink); background: linear-gradient(135deg, var(--brand), var(--accent));
-  border-color: transparent; }
-:root[data-theme="light"] .step.done { color: #fff; }
+/* stepper — a compact milestone timeline: each step shows its name + the date */
+.stepper { display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; margin: .8rem 0 .2rem; }
+.step { display: flex; flex-direction: column; gap: .15rem; text-align: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: .4rem .3rem; position: relative; }
+.step-name { font-size: .64rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--faint); }
+.step-date { font-size: .74rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.step.done { border-color: color-mix(in srgb, var(--brand) 55%, transparent);
+  background: color-mix(in srgb, var(--brand) 12%, var(--surface)); }
+.step.done .step-name { color: var(--brand); }
+.step.done .step-date { color: var(--ink); }
+.step.done::after { content: "✓"; position: absolute; top: -7px; right: -6px; width: 16px; height: 16px;
+  font-size: .62rem; font-weight: 800; display: grid; place-items: center; border-radius: 50%;
+  color: var(--accent-ink); background: linear-gradient(135deg, var(--brand), var(--accent)); }
 
 .next-action { margin-top: .5rem; font-size: .82rem; color: var(--ink);
   background: rgba(28,227,164,.08); border-left: 3px solid var(--accent);
@@ -409,3 +416,31 @@ h2 { position: relative; }
 /* Agent group summary — classic ruled header */
 .agent-summary { border-bottom: 1px solid var(--line); }
 .agent-nm { font-family: var(--serif); font-weight: 600; letter-spacing: -.005em; }
+
+/* =========================================================================
+   Simple-to-use layer — calmer chips, clearer spacing, less visual noise.
+   ========================================================================= */
+/* Secondary info chips recede so Storage / ICD / TANSAD stand out */
+.chip.subtle { color: var(--faint); background: transparent; border-color: var(--line);
+  font-weight: 500; }
+.chip.subtle:hover { color: var(--muted); }
+
+/* a touch more air between BL cards so long lists stay scannable */
+.agent-body { display: flex; flex-direction: column; gap: .7rem; }
+.bl-card { padding: 1rem 1.1rem; }
+.bl-client { font-size: 1.04rem; }
+
+/* next-action reads as a calm hint, not an alert */
+.next-action { background: color-mix(in srgb, var(--brand) 7%, transparent);
+  border-left-width: 3px; font-size: .8rem; }
+
+/* section headings — quieter, more editorial */
+.section-head { margin: 1.6rem 0 .8rem; font-family: var(--serif); font-weight: 600;
+  letter-spacing: -.01em; }
+
+/* keep the 4-step timeline legible on small phones */
+@media (max-width: 420px) {
+  .step-name { font-size: .58rem; }
+  .step-date { font-size: .68rem; }
+  .stepper { gap: .3rem; }
+}

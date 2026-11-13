@@ -15,10 +15,22 @@
   {% elif bl.tansad_no and bl.category != 'completed' %}<div class="bl-status"><span class="assessed-tag">✓ {{ t('assessed') }}</span></div>{% endif %}
 
   <div class="stepper">
-    <span class="step {{ 'done' if bl.manifest_date }}">{{ t('manifest_date') }}</span>
-    <span class="step {{ 'done' if bl.carry_in_date }}">{{ t('carry_in_date') }}</span>
-    <span class="step {{ 'done' if bl.release_date }}">{{ t('release_date') }}</span>
-    <span class="step {{ 'done' if bl.gate_out_date }}">{{ t('gate_out_date') }}</span>
+    <div class="step {{ 'done' if bl.manifest_date }}">
+      <span class="step-name">{{ t('manifest_date') }}</span>
+      <span class="step-date">{{ bl.manifest_date or ('~' ~ bl.eta if bl.eta) or '—' }}</span>
+    </div>
+    <div class="step {{ 'done' if bl.carry_in_date }}">
+      <span class="step-name">{{ t('carry_in_date') }}</span>
+      <span class="step-date">{{ bl.carry_in_date or '—' }}</span>
+    </div>
+    <div class="step {{ 'done' if bl.release_date }}">
+      <span class="step-name">{{ t('release_date') }}</span>
+      <span class="step-date">{{ bl.release_date or '—' }}</span>
+    </div>
+    <div class="step {{ 'done' if bl.gate_out_date }}">
+      <span class="step-name">{{ t('gate_out_date') }}</span>
+      <span class="step-date">{{ bl.gate_out_date or '—' }}</span>
+    </div>
   </div>
 
   {% set na = next_action(bl) %}
@@ -32,17 +44,11 @@
       <span class="chip warn" title="{{ t('storage_starts') }} {{ st.free_until }}">🆓 {{ t('free_left') }}: {{ st.free_left }} {{ t('days') }}</span>
     {% endif %}
     {% if bl.icd %}<span class="chip" title="{{ bl.icd }}">🏭 {{ icd_short(bl.icd) }}</span>{% endif %}
-    {% if bl.manifest_date %}<span class="chip">📅 {{ t('manifest_date') }}: {{ bl.manifest_date }}</span>
-    {% elif bl.eta %}<span class="chip eta">🕗 {{ t('eta') }}: {{ bl.eta }}</span>{% endif %}
-    {% if bl.discharge_date %}<span class="chip">⚓ {{ t('discharge_date') }}: {{ bl.discharge_date }}</span>{% endif %}
-    {% if bl.carry_in_date %}<span class="chip">📥 {{ t('carry_in_date') }}: {{ bl.carry_in_date }}</span>{% endif %}
-    {% if bl.release_date %}<span class="chip ok">✅ {{ t('release_date') }}: {{ bl.release_date }}</span>{% endif %}
-    {% if bl.gate_out_date %}<span class="chip ok">🚚 {{ t('gate_out_date') }}: {{ bl.gate_out_date }}</span>{% endif %}
-    {% if bl.vessel %}<span class="chip">🛳️ {{ bl.vessel }}</span>{% endif %}
-    {% if bl.shipping_line %}<span class="chip">🚢 {{ bl.shipping_line }}</span>{% endif %}
-    {% if bl.tansad_no %}<span class="chip">🧾 {{ t('tansad_no') }}: {{ bl.tansad_no }}</span>{% endif %}
-    {% if bl.container_count %}<span class="chip">🧮 {{ bl.container_count }} cntr</span>{% endif %}
-    {% if bl.containers %}<span class="chip mono">🔢 {{ bl.containers }}</span>{% endif %}
+    {% if bl.tansad_no %}<span class="chip">🧾 {{ bl.tansad_no }}</span>{% endif %}
+    {% if bl.discharge_date %}<span class="chip subtle" title="{{ t('discharge_date') }}">⚓ {{ bl.discharge_date }}</span>{% endif %}
+    {% if bl.vessel %}<span class="chip subtle">🛳️ {{ bl.vessel }}</span>{% endif %}
+    {% if bl.shipping_line %}<span class="chip subtle">🚢 {{ bl.shipping_line }}</span>{% endif %}
+    {% if bl.container_count %}<span class="chip subtle">🧮 {{ bl.container_count }} cntr</span>{% endif %}
   </div>
   {% if bl.notes %}<div class="bl-notes">📝 {{ bl.notes }}</div>{% endif %}
   <div class="bl-actions">

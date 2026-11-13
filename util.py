@@ -12,6 +12,30 @@ from datetime import datetime, date, timedelta
 STORAGE_FREE_DAYS = int(os.environ.get("STORAGE_FREE_DAYS", "7") or "7")
 STORAGE_GRACE = int(os.environ.get("STORAGE_GRACE", "2") or "2")
 
+# Free-day exception: public ports / government terminals give only 5 free days,
+# while private ICDs keep the usual 7. The facility is matched (case-insensitive
+# substring) against the BL's ICD name/code. Extend the list without code changes
+# via STORAGE_PORT_KEYWORDS (comma-separated).
+STORAGE_PORT_FREE_DAYS = int(os.environ.get("STORAGE_PORT_FREE_DAYS", "5") or "5")
+_DEFAULT_PORT_KEYWORDS = ("DP WORLD", "DPWORLD", "SALSALA", "SALISLA",
+                          "TANGA PORT", "MTWARA", "TEAGTL",
+                          "EAST AFRICA GATEWAY", "GATEWAY TERMINAL")
+STORAGE_PORT_KEYWORDS = tuple(
+    k.strip().upper() for k in
+    (os.environ.get("STORAGE_PORT_KEYWORDS") or ",".join(_DEFAULT_PORT_KEYWORDS)).split(",")
+    if k.strip()
+)
+
+
+def free_days_for(icd):
+    """Free days before storage starts for this facility: 5 for public ports /
+    terminals (DP World, SALSALA, Tanga/Mtwara port, TEAGTL, ...), else 7."""
+    s = (icd or "").upper()
+    for kw in STORAGE_PORT_KEYWORDS:
+        if kw and kw in s:
+            return STORAGE_PORT_FREE_DAYS
+    return STORAGE_FREE_DAYS
+
 
 def _parse_date(s):
     try:
@@ -41,13 +65,14 @@ def storage_info(bl, today=None):
     else:
         return {}
     today = today or date.today()
-    free_until = anchor + timedelta(days=STORAGE_FREE_DAYS)
+    free_days = free_days_for(bl.get("icd"))
+    free_until = anchor + timedelta(days=free_days)
     days = (today - free_until).days              # >=1 => accruing storage
     return {
         "anchor": anchor.isoformat(),
         "kind": kind,
         "free_until": free_until.isoformat(),
-        "free_days": STORAGE_FREE_DAYS,
+        "free_days": free_days,
         "days": days,
         "free_left": max(0, -days),
         "active": days >= 1,

@@ -52,14 +52,33 @@ def _is_released_overstay(status):
     return "released overstayed" in (status or "").lower()
 
 
+def _carry_in_wh(plist):
+    """Warehouse code where the cargo was carried in — this is the ICD. Used to
+    recognise the ICD even when the delivery-place code is blank or differs."""
+    best_dt, wh = "", ""
+    for s in plist or []:
+        if s.get("cagTrkngPrcssCd") in CARRY_IN_CODES:
+            dt = str(s.get("prcssDt") or "")
+            if dt >= best_dt:
+                best_dt, wh = dt, s.get("wrhsCd")
+    return wh
+
+
 def _final_gate_out(plist, dlvr_code):
-    """Return the date of the gate-out that happened AT the delivery place (the
-    ICD), i.e. the real completion — not the earlier gate-out at the port while
-    the cargo was only moving to the ICD. Returns '' if none."""
+    """Return the date of the FINAL gate-out — the one FROM the ICD, i.e. the
+    real completion — not the earlier gate-out at the port while the cargo was
+    only moving to the ICD. The ICD is identified by the delivery-place code
+    OR the warehouse where Carry In happened, so completion is still detected
+    when dlvrPlcCd is blank or recorded under a slightly different code.
+    Returns '' if none."""
+    icd_wh = _carry_in_wh(plist)
     best = ""
     for s in plist or []:
-        if (s.get("cagTrkngPrcssCd") in GATE_OUT_CODES
-                and dlvr_code and s.get("wrhsCd") == dlvr_code):
+        if s.get("cagTrkngPrcssCd") not in GATE_OUT_CODES:
+            continue
+        wh = s.get("wrhsCd")
+        at_icd = (dlvr_code and wh == dlvr_code) or (icd_wh and wh == icd_wh)
+        if at_icd:
             dt = str(s.get("prcssDt") or "")
             if dt > best:
                 best = dt

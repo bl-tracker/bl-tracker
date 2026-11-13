@@ -24,6 +24,10 @@ from openpyxl import load_workbook
 from carriers import detect_shipping_line
 
 AGENT_SHEET_RE = re.compile(r"^(?P<agent>.+?)\s+(?P<kind>CNT|VEHICLE)$", re.I)
+# "RE 26", "RE 26 (2)" ... are extra container job sheets placed right after a
+# company's CNT sheet. They hold real jobs (many already gated out) and must be
+# imported too — they belong to the company whose CNT sheet precedes them.
+RE26_SHEET_RE = re.compile(r"^RE\s*26\b", re.I)
 
 # field -> list of matcher functions on a lowercased combined header label
 MATCHERS = {
@@ -106,12 +110,19 @@ def _find_header(rows):
 def parse(file_bytes):
     wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
     out = []
+    last_agent = ""          # most recent "X CNT/VEHICLE" company, for RE 26 sheets
     for name in wb.sheetnames:
         m = AGENT_SHEET_RE.match(name or "")
-        if not m:
+        if m:
+            agent = m.group("agent").strip()
+            last_agent = agent
+            ktype = "Container" if m.group("kind").upper() == "CNT" else "Vehicle"
+        elif RE26_SHEET_RE.match(name or ""):
+            # extra container jobs for the company whose CNT sheet came just above
+            agent = last_agent or "RE 26"
+            ktype = "Container"
+        else:
             continue
-        agent = m.group("agent").strip()
-        ktype = "Container" if m.group("kind").upper() == "CNT" else "Vehicle"
         rows = list(wb[name].iter_rows(values_only=True))
         hi, cols = _find_header(rows)
         if hi is None or "client" not in cols:
