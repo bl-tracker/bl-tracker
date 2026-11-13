@@ -146,6 +146,15 @@ def _migrate():
                 conn.execute(text("ALTER TABLE users ADD COLUMN agents TEXT DEFAULT ''"))
     except Exception:
         pass
+    # Backfill: any already-stored BL that has gated out must read as completed
+    # (fixes rows whose category lagged behind — "zimeshatoka ila hazijakamilika").
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "UPDATE bls SET category='completed' "
+                "WHERE COALESCE(gate_out_date,'') <> '' AND category <> 'completed'"))
+    except Exception:
+        pass
 
 
 def _row_to_dict(row):
@@ -192,6 +201,11 @@ def get_bl(bl_id):
 
 def _clean(data):
     now = _now()
+    category = _norm_category(data.get("category"))
+    # Completion = Gate Out: a BL that has a gate-out date is always 'completed',
+    # so a stale or manually-set category can never hide a gated-out job.
+    if (data.get("gate_out_date") or "").strip():
+        category = "completed"
     return {
         "bl_no": (data.get("bl_no") or "").strip(),
         "client": (data.get("client") or "").strip(),
@@ -199,7 +213,7 @@ def _clean(data):
         "vessel": (data.get("vessel") or "").strip(),
         "shipping_line": (data.get("shipping_line") or "").strip(),
         "status": (data.get("status") or "").strip(),
-        "category": _norm_category(data.get("category")),
+        "category": category,
         "bl_date": (data.get("bl_date") or "").strip(),
         "notes": (data.get("notes") or "").strip(),
         "icd": (data.get("icd") or "").strip(),
@@ -258,6 +272,13 @@ def apply_tesws_update(bl_id, fields):
         v = str(fields.get(k) or "").strip()
         if v:  # only fill — never wipe an Excel/manual value
             values[k] = v
+    # Completion = Gate Out: keep category in step with the gate-out date.
+    if "gate_out_date" in values:
+        if values["gate_out_date"]:
+            values["category"] = "completed"
+        elif values.get("category") == "completed":
+            # TANeSW no longer reports a gate-out -> don't leave it stuck completed
+            values["category"] = "in_progress"
     with engine.begin() as conn:
         conn.execute(sa_update(bls).where(bls.c.id == bl_id).values(**values))
 

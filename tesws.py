@@ -154,8 +154,20 @@ def shipping_agents(session=None, timeout=20, force=False):
         return _AGENT_CACHE["map"] or {}
 
 
+def _as_content(content):
+    """TANeSW sometimes returns trkngDtl.content as a LIST of records (a BL that
+    matches several cargo entries) instead of a single object. Pick the most
+    complete record so everything downstream always gets one mapping, never a
+    list (which caused: 'list' object has no attribute 'get')."""
+    if isinstance(content, list):
+        dicts = [c for c in content if isinstance(c, dict)]
+        return max(dicts, key=lambda c: len(c.get("blPrcssLst") or []), default=None)
+    return content if isinstance(content, dict) else None
+
+
 def map_fields(content, agent_map=None):
     """Geuza trkngDtl.content kuwa sehemu za database tunazosasisha."""
+    content = _as_content(content) or {}
     if agent_map is None:
         agent_map = _AGENT_CACHE.get("map") or {}
     plist = content.get("blPrcssLst") or []
@@ -233,7 +245,7 @@ def _probe(bl, getter, timeout):
         return "error", None
     if (data.get("totalCnt") or {}).get("content", 0) < 1:
         return "empty", None
-    content = (data.get("trkngDtl") or {}).get("content")
+    content = _as_content((data.get("trkngDtl") or {}).get("content"))
     return ("ok", content) if content else ("empty", None)
 
 

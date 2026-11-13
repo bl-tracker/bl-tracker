@@ -337,8 +337,21 @@ CAT_SORT = {"problem": 0, "in_progress": 1, "completed": 2, "other": 3}
 
 
 def is_done(b):
-    """A BL is 'done' ONLY once it has gated out (completion = Gate Out)."""
-    return b.get("category") == "completed"
+    """A BL is 'done' once it has gated out. Completion = Gate Out, so ANY BL
+    with a gate-out date counts as completed even if its saved category still
+    lags behind (e.g. a manual edit, or a stale status from the Excel)."""
+    return (b.get("category") == "completed"
+            or bool((b.get("gate_out_date") or "").strip()))
+
+
+def apply_gate_out_category(records):
+    """Make the shown category agree with reality: a BL that has a gate-out date
+    reads as 'completed' everywhere (badge, counts, grouping, dashboard), even if
+    its stored category still says in-progress. Mutates and returns the list."""
+    for b in records:
+        if (b.get("gate_out_date") or "").strip() and b.get("category") != "completed":
+            b["category"] = "completed"
+    return records
 
 
 def build_summary_text(lang=None):
@@ -539,7 +552,8 @@ def bl():
     # a restricted user may only filter within their own companies
     if allow is not None and agent and agent not in allow:
         agent = ""
-    records = filter_allowed(db.list_bls(search or None, agent or None, kind or None))
+    records = apply_gate_out_category(
+        filter_allowed(db.list_bls(search or None, agent or None, kind or None)))
     counts = _counts_from(records)
     doc_ids = db.bls_with_documents()
     agents = db.agents_list() if allow is None else sorted(allow)
